@@ -6,7 +6,7 @@
 
 //typedef unsigned long long int pointer; //Not optimal
 
-int isUnicodeEncoding = 1;
+int isUnicodeEncoding = 0;
 
 typedef enum Direcion{
     UP,
@@ -218,7 +218,11 @@ void _print1char(Matrix *map){
     while(scanf(" %d%d", &x, &y) == 2){
         if(x >= 0 && y >= 0 && x < map->width && y < map->height){
             for(int i = 0;i < 2; i++){
-                printf("\nvalue: %d, %d, %d, %d\n", map->matrix[x][y].chars[i].bytes.c[0], map->matrix[x][y].chars[i].bytes.c[1], map->matrix[x][y].chars[i].bytes.c[2], map->matrix[x][y].chars[i].bytes.c[3]);
+                printf("\nvalue: %hhx, %hhx, %hhx, %hhx\n",
+                (unsigned)map->matrix[x][y].chars[i].bytes.c[0],
+                (unsigned)map->matrix[x][y].chars[i].bytes.c[1],
+                (unsigned)map->matrix[x][y].chars[i].bytes.c[2],
+                (unsigned)map->matrix[x][y].chars[i].bytes.c[3]);
                 printf("as character: \"");
                 printChar(map->matrix[x][y].chars[i]);
                 printf("\"\n");
@@ -250,7 +254,7 @@ int core(int argc, char const *argv[])
     //test code
     printf("map:\n");
     _testprint(&map);
-    //_print1char(&map);
+    _print1char(&map);
     /* code */
     //free stuff
     rmMatrix(&map);
@@ -270,7 +274,7 @@ int main(int argc, char const *argv[])
 {
     2 + 3;
     int ret;
-    char const *array[] = {argv[0], "snake/map1.txt"};
+    char const *array[] = {argv[0], "map1_e.txt"};
     ret = core(2, array);
     printf("\npress any key to continue");
     getchar();
