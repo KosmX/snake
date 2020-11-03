@@ -2,12 +2,23 @@
 #include<stdlib.h>
 #include<string.h>
 #include<locale.h>
+#include<ctype.h>
+
+#ifdef __linux__
+#include<sys/ioctl.h>
+#include<unistd.h>
+#include<time.h>
+#else
+#include<Windows.h>
+#endif
 
 //#define windows 1
 
 //typedef unsigned long long int pointer; //Not optimal
 
 //int isUnicodeEncoding = 0;
+
+
 int isUnicodeEncoding(int set){
     static int bl = 0;
     if(set){
@@ -69,6 +80,47 @@ typedef struct chunkMatrix{
     int width;
     int height;
 }Matrix;
+
+typedef struct food{
+    Pos pos;
+    int rand;
+    struct food *next;
+}food;
+
+typedef struct screenData{
+    Pos pos;
+    Pos size;
+}screenData;
+
+//-----------methods--------------
+
+
+struct Vec2i getWindowSize(){
+    struct Vec2i size;
+    #ifdef __linux__
+    struct winsize info;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &info);
+    size.x = info.ws_col;
+    size.y = info.ws_row;
+    #else    
+    CONSOLE_SCREEN_BUFFER_INFO info;
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &info);
+    size.x = info.srWindow.Right - info.srWindow.Left + 1;
+    size.y = info.srWindow.Bottom - info.srWindow.Top + 1;
+    #endif
+    return size;
+}
+
+void unisleep(int milisec){
+    #ifdef __linux__
+    struct timespec ts;
+    ts.tv_sec = milisec / 1000;
+    ts.tv_nsec = (milisec % 1000) * 1000000;
+    nanosleep(&ts, NULL);
+    #else
+    Sleep(milisec);
+    #endif
+}
 
 /**
  * Only the first byte is required
@@ -206,6 +258,68 @@ void rmMatrix(Matrix *map){
     free(map->matrix);
 }
 
+//Use printChar
+void printChunk(chunk ch, Pos pos, screenData *scrDat){
+    pos.x -= scrDat->pos.x;
+    pos.y -= scrDat->pos.y;
+    if(pos.x < 0 || pos.y < 0 || pos.x >= scrDat->pos.x || pos.y >= scrDat->pos.y){
+        return; //if pos is not on the screen, just do nothing.
+    }
+    
+}
+
+
+//------------config loader------------
+
+int loadConfig(int *tickSpeed){
+    FILE *config;
+    config = fopen("config.cfg", "r");
+    //int stillFile = 1; //boolean to show file is ended...
+    if(config == NULL){
+        return -1;
+    }
+    while(1){
+        char name[32] = {0}, c; //it have to be enough;
+        while(c = fgetc(config), c != -1 && isspace(c));
+        if(c == -1){
+            break;
+        }
+        //name[0] = c;
+        for(int i = 0; i < 32 && !isspace(c) && c != '='; i++, c = fgetc(config)){
+            name[i] = c;
+        }
+        //c = fgetc(config);
+        while(c != '='){
+            c = fgetc(config);
+            if(c == -1){
+                printf("I can't  understand the config file: %s", name);
+                return EOF;
+            }
+        }
+        if(strncmp(name, "use_utf8", 9) == 0){
+            int bl;
+            fscanf(config, " %d", &bl);
+            isUnicodeEncoding(bl);
+        }
+        else if(strncmp(name, "tickspeed", 10) == 0){
+            fscanf(config, " %d", tickSpeed);
+        }
+        else{
+            printf("Unknown keyword: %s", name);
+        }
+    }
+    return 0;
+}
+
+
+
+//------------LOOP METHOD--------------
+
+int loop(Matrix *matrix, int tickspeed){
+
+    unisleep(tickspeed); //Special sleep to work both in windows and unix environment
+    return 0;
+}
 
 //------------TESTING METHODS-------------
 void _testprint(Matrix *map){
@@ -247,10 +361,19 @@ int core(int argc, char const *argv[])
     FILE *f;
     Matrix map;
 
+    int tickspeed = 100; // if no config, default value
+
+    //----load config----
+
+    if(loadConfig(&tickspeed)){
+        printf("Error while loading config...");
+    }
+
     //----init tasks----
 
-    if()
-    setlocale(LC_ALL, ".utf-8");
+    if(isUnicodeEncoding(0)){
+        setlocale(LC_ALL, ".utf-8");
+    }
 
     //----import map----
 
