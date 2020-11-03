@@ -372,7 +372,9 @@ int core(int argc, char const *argv[])
     //----init tasks----
 
     if(isUnicodeEncoding(0)){
+        #ifndef __linux__
         setlocale(LC_ALL, ".utf-8");
+        #endif
     }
 
     //----import map----
