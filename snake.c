@@ -1,12 +1,20 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+#include<locale.h>
 
 //#define windows 1
 
 //typedef unsigned long long int pointer; //Not optimal
 
-int isUnicodeEncoding = 0;
+//int isUnicodeEncoding = 0;
+int isUnicodeEncoding(int set){
+    static int bl = 0;
+    if(set){
+        bl = 1;
+    }
+    return bl;
+}
 
 typedef enum Direcion{
     UP,
@@ -94,7 +102,7 @@ void printChar(unichar c){
 //fueoetoeoecsoeoe *next
 
 int readFile(FILE *file, Matrix *matrix){
-    int c, len, maxLineLen = 0, lineCount = (3,1), lineLen = 0;
+    int c, len, maxLineLen = 0, lineCount = (3,1), lineLen = 0; //lineCount = (3,1) ??? why?... i was just bored
     struct Vec2i pos;
     pos.x = 0;
     pos.y = 0;
@@ -238,6 +246,14 @@ int core(int argc, char const *argv[])
 {
     FILE *f;
     Matrix map;
+
+    //----init tasks----
+
+    if()
+    setlocale(LC_ALL, ".utf-8");
+
+    //----import map----
+
     if(argc == 1){
         printf("Usage: snake <map name> [<snake skin>]");
         return 0;
@@ -272,9 +288,9 @@ int main(int argc, char const *argv[])
 
 int main(int argc, char const *argv[])
 {
-    2 + 3;
+    2 + 3;  //... this does nothing...
     int ret;
-    char const *array[] = {argv[0], "map1_e.txt"};
+    char const *array[] = {argv[0], "map1.txt"};
     ret = core(2, array);
     printf("\npress any key to continue");
     getchar();
