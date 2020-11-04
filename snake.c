@@ -292,7 +292,7 @@ void  updateScreen(Matrix *map, screenData *scrDat, snakeChain *head){
     int do_update;
     do_update = updateScreenSize(map, scrDat);
     if(scrDat->isXRepeat){
-        if(head->pos.x < scrDat->pos.x - 6){
+        if(head->pos.x < scrDat->pos.x - 6){//TODO
             
         }
     }
@@ -302,7 +302,7 @@ void  updateScreen(Matrix *map, screenData *scrDat, snakeChain *head){
 }
 
 //Tick the game, step the snake, collect and place food.
-void tick(Matrix *map, screenData *scrDat, snakeChain *snake){
+void tick(Matrix *map, screenData *scrDat, snakeChain *snake, Direction *d){
 
 }
 
@@ -357,7 +357,13 @@ int loadConfig(int *tickSpeed, int *repeatMap){
 
 int loop(Matrix *matrix, int tickspeed){
 
-    unisleep(tickspeed); //Special sleep to work both in windows and unix environment
+    Direction d = DOWN;
+    screenData scrDat;
+    snakeChain snake;   //TODO init snake, screen data
+    while(42){
+        tick(matrix, &scrDat, &snake, &d);
+        unisleep(tickspeed); //Special sleep to work both in windows and unix environment
+    }
     return 0;
 }
 
