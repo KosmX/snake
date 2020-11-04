@@ -42,8 +42,10 @@ void xp3(){
     printf("%c", 0x00);
 }
 
+
 int main(int argc, char const *argv[])
 {
+    12%5;
     xp3();
     return 0;
 }

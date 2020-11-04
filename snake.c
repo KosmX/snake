@@ -90,6 +90,9 @@ typedef struct food{
 typedef struct screenData{
     Pos pos;
     Pos size;
+    int repeatMap;
+    int isXRepeat;
+    int isYRepeat;
 }screenData;
 
 //-----------methods--------------
@@ -258,7 +261,9 @@ void rmMatrix(Matrix *map){
     free(map->matrix);
 }
 
-//Use printChar
+//Use what chunk,
+//witch screen coordinates?
+//just the screen data
 void printChunk(chunk ch, Pos pos, screenData *scrDat){
     pos.x -= scrDat->pos.x;
     pos.y -= scrDat->pos.y;
@@ -268,10 +273,42 @@ void printChunk(chunk ch, Pos pos, screenData *scrDat){
     
 }
 
+int updateScreenSize(Matrix *map, screenData *scrDat){
+    struct Vec2i size = getWindowSize();
+    if(size.x == scrDat->size.x && size.y == scrDat->size.y){
+        return 0; //no change happened
+    }
+    scrDat->size.x = size.x;
+    scrDat->size.y = size.y;
+    if(scrDat->repeatMap){
+        scrDat->isXRepeat = size.x < map->width;
+        scrDat->isYRepeat = size.y < map->height;
+    }
+    return 1;
+}
+
+//Update screen if required 
+void  updateScreen(Matrix *map, screenData *scrDat, snakeChain *head){
+    int do_update;
+    do_update = updateScreenSize(map, scrDat);
+    if(scrDat->isXRepeat){
+        if(head->pos.x < scrDat->pos.x - 6){
+            
+        }
+    }
+    else{
+        scrDat->pos.x = 0;
+    }
+}
+
+//Tick the game, step the snake, collect and place food.
+void tick(Matrix *map, screenData *scrDat, snakeChain *snake){
+
+}
 
 //------------config loader------------
 
-int loadConfig(int *tickSpeed){
+int loadConfig(int *tickSpeed, int *repeatMap){
     FILE *config;
     config = fopen("config.cfg", "r");
     //int stillFile = 1; //boolean to show file is ended...
@@ -303,6 +340,9 @@ int loadConfig(int *tickSpeed){
         }
         else if(strncmp(name, "tickspeed", 10) == 0){
             fscanf(config, " %d", tickSpeed);
+        }
+        else if(strncmp(name, "repeatMap", 10) == 0){
+            fscanf(config, " %d", repeatMap);
         }
         else{
             printf("Unknown keyword: %s", name);
@@ -361,11 +401,11 @@ int core(int argc, char const *argv[])
     FILE *f;
     Matrix map;
 
-    int tickspeed = 100; // if no config, default value
+    int tickspeed = 100, repeatMap = 0; // if no config, default value
 
     //----load config----
 
-    if(loadConfig(&tickspeed)){
+    if(loadConfig(&tickspeed, &repeatMap)){
         printf("Error while loading config...");
     }
 
