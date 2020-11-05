@@ -302,6 +302,10 @@ void  updateScreen(Matrix *map, screenData *scrDat, snakeChain *head){
 }
 
 //Tick the game, step the snake, collect and place food.
+//check new direction
+//update display
+//uppdate food state
+//step snake
 void tick(Matrix *map, screenData *scrDat, snakeChain *snake, Direction *d){
 
 }
