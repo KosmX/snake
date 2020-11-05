@@ -1,5 +1,10 @@
 #include<stdio.h>
 #include<stdlib.h>
+#include<Windows.h>
+
+#ifndef __linux__
+#include<conio.h>
+#endif
 
 int xp1(void)
 {
@@ -42,11 +47,16 @@ void xp3(){
     printf("%c", 0x00);
 }
 
+void xp4(){
+    Sleep(1000);
+    char c = _getch();
+    printf("\nchar: %c\n", c);
+}
 
 int main(int argc, char const *argv[])
 {
     12%5;
-    xp3();
+    xp4();
     return 0;
 }
 

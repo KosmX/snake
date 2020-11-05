@@ -1,0 +1,2 @@
+
+void addOne(int i);

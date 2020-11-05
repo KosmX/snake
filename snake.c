@@ -4,20 +4,15 @@
 #include<locale.h>
 #include<ctype.h>
 
-#ifdef __linux__
-#include<sys/ioctl.h>
-#include<unistd.h>
-#include<time.h>
-#else
-#include<Windows.h>
-#endif
+#include "structs.h"
+#include "multiplatformLib.h"
 
-//#define windows 1
+//There are lots of hints on https://infoc.eet.bme.hu/
 
-//typedef unsigned long long int pointer; //Not optimal
+//#define windows 1 with #ifndef __linux__ solved...
+//typedef unsigned long long int pointer; //Not optimal and not required. sometimes even the worst idea...
 
-//int isUnicodeEncoding = 0;
-
+//-----------methods--------------
 
 int isUnicodeEncoding(int set){
     static int bl = 0;
@@ -25,104 +20,6 @@ int isUnicodeEncoding(int set){
         bl = 1;
     }
     return bl;
-}
-
-typedef enum Direcion{
-    UP,
-    RIGHT,
-    DOWN,
-    LEFT,
-}Direction;
-
-typedef struct Vec2i{
-    int x;
-    int y;
-}Pos;
-
-typedef struct snakeChain
-{
-    int num;
-    struct Vec2i pos;
-    struct snakeChain *next;
-
-}snakeChain;
-
-typedef union unichar{
-    int isUnicone : 1;
-    struct{
-        char c[4];
-    }bytes;
-
-}unichar;
-typedef struct chunk  //struct stores 2 chars and it's color :D
-{
-    unichar chars[2];
-    /*
-    struct{
-        int fg : 3; //3 bit color codes.
-        int bg : 3; //red green blue black white and 3 other (idk these)
-    }color;*/
-}chunk;
-
-typedef struct state{
-    struct Vec2i displaySize;
-    struct Vec2i displayPos;
-    int commands[2];
-}globalState;
-
-typedef struct linkedString{
-    unichar value;
-    struct linkedString *next;
-}linkedString;
-
-typedef struct chunkMatrix{
-    chunk **matrix;
-    int width;
-    int height;
-}Matrix;
-
-typedef struct food{
-    Pos pos;
-    int rand;
-    struct food *next;
-}food;
-
-typedef struct screenData{
-    Pos pos;
-    Pos size;
-    int repeatMap;
-    int isXRepeat;
-    int isYRepeat;
-}screenData;
-
-//-----------methods--------------
-
-
-struct Vec2i getWindowSize(){
-    struct Vec2i size;
-    #ifdef __linux__
-    struct winsize info;
-    ioctl(STDOUT_FILENO, TIOCGWINSZ, &info);
-    size.x = info.ws_col;
-    size.y = info.ws_row;
-    #else    
-    CONSOLE_SCREEN_BUFFER_INFO info;
-    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &info);
-    size.x = info.srWindow.Right - info.srWindow.Left + 1;
-    size.y = info.srWindow.Bottom - info.srWindow.Top + 1;
-    #endif
-    return size;
-}
-
-void unisleep(int milisec){
-    #ifdef __linux__
-    struct timespec ts;
-    ts.tv_sec = milisec / 1000;
-    ts.tv_nsec = (milisec % 1000) * 1000000;
-    nanosleep(&ts, NULL);
-    #else
-    Sleep(milisec);
-    #endif
 }
 
 /**
@@ -154,7 +51,7 @@ void printChar(unichar c){
     }
 }
 
-//fueoetoeoecsoeoe *next
+//fueoetoeoecsoeoe *next //what to NOT do
 
 int readFile(FILE *file, Matrix *matrix){
     int c, len, maxLineLen = 0, lineCount = (3,1), lineLen = 0; //lineCount = (3,1) ??? why?... i was just bored
