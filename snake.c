@@ -7,6 +7,9 @@
 #include "structs.h"
 #include "multiplatformLib.h"
 
+//debugmalloc from infoc
+#include "debugmalloc.h"
+
 //There are lots of hints on https://infoc.eet.bme.hu/
 
 //#define windows 1 with #ifndef __linux__ solved...
@@ -27,7 +30,7 @@ int isUnicodeEncoding(int set){
  */
 int checkUnicharLen(char c){
     int i = 0;
-    if(!isUnicodeEncoding){
+    if(!isUnicodeEncoding(0)){
         return 1; //int windows-xyzw every char has 1 len;
     }
     if(!(c & 0x80)){
@@ -54,22 +57,19 @@ void printChar(unichar c){
 //fueoetoeoecsoeoe *next //what to NOT do
 
 int readFile(FILE *file, Matrix *matrix){
-    int c, len, maxLineLen = 0, lineCount = (3,1), lineLen = 0; //lineCount = (3,1) ??? why?... i was just bored
+    int c, len, maxLineLen = 0, lineCount = 1, lineLen = 0; //lineCount = (3,1) ??? why?... i was just bored
     struct Vec2i pos;
     pos.x = 0;
     pos.y = 0;
     linkedString *linkedStr = 0, *current = 0, *next;
     //linkedStr = malloc(sizeof(linkedString));
-    while(c = fgetc(file)){
+    while(c = fgetc(file), c != EOF){
         next = malloc(sizeof(linkedString));
         if(next == NULL){
             return EOF;
         }
         memset(next, 0, sizeof(linkedString)); //TODO remove after debugging
         next->next = 0;
-        if(c == -1){
-            break;
-        }
         while (c == '\r')
         {
             c = fgetc(file);
@@ -79,7 +79,7 @@ int readFile(FILE *file, Matrix *matrix){
         }
         next->value.bytes.c[0] = c;
         len = checkUnicharLen(c);
-        if(isUnicodeEncoding && len -1){
+        if(isUnicodeEncoding(0) && len -1){
             for (int i = 1; i < len; i++){
                 c = fgetc(file);
                 if(c == -1){
@@ -287,7 +287,7 @@ void _print1char(Matrix *map){
     while(scanf(" %d%d", &x, &y) == 2){
         if(x >= 0 && y >= 0 && x < map->width && y < map->height){
             for(int i = 0;i < 2; i++){
-                printf("\nvalue: %hhx, %hhx, %hhx, %hhx\n",
+                printf("\nvalue: %hx, %hx, %hx, %hx\n",
                 (unsigned)map->matrix[x][y].chars[i].bytes.c[0],
                 (unsigned)map->matrix[x][y].chars[i].bytes.c[1],
                 (unsigned)map->matrix[x][y].chars[i].bytes.c[2],
@@ -360,11 +360,13 @@ int main(int argc, char const *argv[])
 
 int main(int argc, char const *argv[])
 {
-    2 + 3;  //... this does nothing...
+    //2 + 3;  //... this does nothing...
     int ret;
     char const *array[] = {argv[0], "map1.txt"};
     ret = core(2, array);
     printf("\npress any key to continue");
     getchar();
-    return 0, ret; //Miért van ez a függvény tele szeméttel??? pl 0, smt...
+    //return 0, ret; //Miért van ez a függvény tele szeméttel??? pl 0, smt...
+
+    return ret; // így szép.
 }

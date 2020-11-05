@@ -1,9 +1,8 @@
 #include<stdio.h>
-#include "a.h"
-
 
 int main(int argc, char const *argv[])
 {
-    hw();
+    char c[8];
+    scanf("%c",)
     return 0;
 }

@@ -1,13 +1,8 @@
+#include<stdio.h>
+
 #include "a.h"
 
-#include "b.h"
-
-void addone(int i){
-    test(i + 1);
+void hw(void){
+    printf("Hello world");
 }
 
-int main(int argc, char const *argv[])
-{
-    /* code */
-    return 0;
-}

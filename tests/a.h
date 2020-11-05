@@ -1,2 +1,3 @@
 
-void addOne(int i);
+
+void hw(void);

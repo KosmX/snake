@@ -8,6 +8,7 @@
 #include<time.h>
 #else
 #include<Windows.h>
+#include<conio.h> // read one char from stdio before pressing enter. essential for contol
 #endif
 
 
@@ -15,6 +16,9 @@
 
 //This package is designed to do the basic operations like get char without waiting for enter or sleep
 //and be able to compile on multiple OS like linux and windows.
+
+
+//get next character if available
 
 
 struct Vec2i getWindowSize(){
