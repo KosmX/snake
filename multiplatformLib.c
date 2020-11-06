@@ -17,8 +17,10 @@
 //This package is designed to do the basic operations like get char without waiting for enter or sleep
 //and be able to compile on multiple OS like linux and windows.
 
+//returns the char or EOF
+int getNextChar(){
 
-//get next character if available
+}
 
 
 struct Vec2i getWindowSize(){

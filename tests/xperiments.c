@@ -48,9 +48,14 @@ void xp3(){
 }
 
 void xp4(){
-    Sleep(1000);
-    char c = _getch();
-    printf("\nchar: %c\n", c);
+    int i;
+    char c;
+    Sleep(5000);
+    while(_kbhit()){
+        c = getch();
+        printf("%c", c);
+    }
+    
 }
 
 int main(int argc, char const *argv[])
