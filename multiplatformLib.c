@@ -1,11 +1,12 @@
 #include "multiplatformLib.h"
-
+#include<stdio.h>
 #include "structs.h"
 
 #ifdef __linux__
 #include<sys/ioctl.h>
 #include<unistd.h>
 #include<time.h>
+#include<termios.h>
 #else
 #include<Windows.h>
 #include<conio.h> // read one char from stdio before pressing enter. essential for contol
@@ -17,9 +18,30 @@
 //This package is designed to do the basic operations like get char without waiting for enter or sleep
 //and be able to compile on multiple OS like linux and windows.
 
+//Init some platform dependent configurations
+int initMultiplatform(){
+    #ifdef __linux__
+    struct termios info;          // This is from stackoverflow
+    tcgetattr(0, &info);          /* get current terminal attirbutes; 0 is the file descriptor for stdin */
+    info.c_lflag &= ~ICANON;      /* disable canonical mode */
+    info.c_cc[VMIN] = 0;          /* don't wait for keypress, return EOF instead */
+    info.c_cc[VTIME] = 0;         /* no timeout */
+    tcsetattr(0, TCSANOW, &info); /* set immediately */
+    #endif
+}
+
 //returns the char or EOF
 int getNextChar(){
-
+    #ifdef __linux__
+    return getchar();
+    #else
+    if(_kbhit()){
+        return _getch();
+    }
+    else{
+        return EOF;
+    }
+    #endif
 }
 
 
