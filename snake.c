@@ -308,6 +308,8 @@ int core(int argc, char const *argv[])
     FILE *f;
     Matrix map;
 
+    initMultiplatform(); // init stuff.
+
     int tickspeed = 100, repeatMap = 0; // if no config, default value
 
     //----load config----
