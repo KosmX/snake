@@ -261,6 +261,8 @@ int loop(Matrix *matrix, int tickspeed){
     Direction d = DOWN;
     screenData scrDat;
     snakeChain snake;   //TODO init snake, screen data
+    scrDat.size.x = 0;
+    scrDat.size.y = 0;
     while(42){
         tick(matrix, &scrDat, &snake, &d);
         unisleep(tickspeed); //Special sleep to work both in windows and unix environment
