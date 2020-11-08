@@ -456,6 +456,7 @@ int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, 
         }
         while (snake->next != 0)
         {
+            snake = snake->next;
             chunk c;
             if(snake != head && snake->pos.x == head->pos.x && snake->pos.y == head->pos.y){
                 if(snake->next != NULL){
@@ -481,7 +482,6 @@ int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, 
                 
                 
             }
-            snake = snake->next;
             tmp_pos2 = snake->pos;
             snake->pos = tmp_pos1;
             tmp_pos1 = tmp_pos2;
@@ -592,7 +592,7 @@ int tick(Matrix *map, screenData *scrDat, snakeChain *snake, Direction *d, Food 
     if(scrDat->commands[0] != NONE){
         *d = scrDat->commands[0];
     }
-    updateScreen(map, scrDat, snake, *d, NULL); // TODO non-null object
+    updateScreen(map, scrDat, snake, *d, food);
     if(d == NONE){
         chunk c;
         c.chars[0].bytes.c[0] = '(';
@@ -639,6 +639,7 @@ int loop(Matrix *matrix, int tickspeed, int repeatMap, int feedAmount, int canBi
         }
         chain = chain->next;
         chain->pos = p;
+        chain->next = NULL;
     }
 
     scrDat.size.x = 0;
