@@ -58,10 +58,30 @@ void xp4(){
     
 }
 
+void xp5(){
+    int x, y;
+    scanf("%d%d", &x, &y);
+    printf("\e[%d;%dHHello", x, y);
+}
+
+typedef struct{
+    int x, y;
+}Pos;
+
+/*void xp6(){
+    Pos a, b;
+    a.x = 5;
+    a.y = 2;
+    b.x = 2+3;
+    b.y = 1;
+    b.y++;
+    printf("%d\n", a == b);
+}*/
+
 int main(int argc, char const *argv[])
 {
     12%5;
-    xp4();
+    xp5();
     return 0;
 }
 

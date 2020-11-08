@@ -10,6 +10,9 @@
 //debugmalloc from infoc
 #include "debugmalloc.h"
 
+#define green "\e[0;32m"
+#define blue "\e[0;34m"
+
 //There are lots of hints on https://infoc.eet.bme.hu/
 
 //#define windows 1 with #ifndef __linux__ solved...
@@ -167,11 +170,38 @@ void printChunk(chunk ch, Pos pos, screenData *scrDat){
     if(pos.x < 0 || pos.y < 0 || pos.x >= scrDat->pos.x || pos.y >= scrDat->pos.y){
         return; //if pos is not on the screen, just do nothing.
     }
-    
+    printf("\e[%d;%dH", pos.x * 2, pos.y);
+    for(int i = 0; i < 2; i++){
+        printChar(ch.chars[i]);
+    }
+}
+
+void print(chunk ch, Pos pos, screenData *scrDat, int width, int height){
+    pos.x = pos.x - scrDat->pos.x;
+    if(pos.x < 0){
+        if(scrDat->isXRepeat){
+            pos.x += width;
+        }
+        else{
+            return;
+        }
+    }
+    pos.y = pos.y - scrDat->pos.y;
+    if(pos.y < 0){
+        if(scrDat->isYRepeat){
+            pos.y += height;
+        }
+        else{
+            return;
+        }
+    }
+    printChunk(ch, pos, scrDat);
 }
 
 int updateScreenSize(Matrix *map, screenData *scrDat){
     struct Vec2i size = getWindowSize();
+    size.x = size.x / 2;
+    size.y = size.y / 2;
     if(size.x == scrDat->size.x && size.y == scrDat->size.y){
         return 0; //no change happened
     }
@@ -185,31 +215,320 @@ int updateScreenSize(Matrix *map, screenData *scrDat){
 }
 
 //Update screen if required 
-void  updateScreen(Matrix *map, screenData *scrDat, snakeChain *head){
+void updateScreen(Matrix *map, screenData *scrDat, snakeChain *head, Direction d, Food *food){
     int do_update;
     do_update = updateScreenSize(map, scrDat);
-    if(scrDat->isXRepeat){
-        if(head->pos.x < scrDat->pos.x - 6){//TODO
-            
+
+    if(do_update){
+        if(scrDat->size.x < map->width){
+            scrDat->pos.x = mod((head->pos.x + scrDat->size.x) / 2 ,map->width, scrDat->repeatMap);
+        }else{
+            scrDat->pos.x = 0;
+        }
+        if(scrDat->size.y < map->height){
+            scrDat->pos.y = mod((head->pos.y + scrDat->size.y) / 2 ,map->height, scrDat->repeatMap);
+        }else{
+            scrDat->pos.y = 0;
         }
     }
     else{
-        scrDat->pos.x = 0;
+        int min_x = scrDat->pos.x;
+        int max_x = scrDat->pos.x + scrDat->size.x;
+        int min_y = scrDat->pos.y;
+        int max_y = scrDat->pos.y + scrDat->size.y;
+        switch (d)
+        {
+        case LEFT:
+            if(scrDat->size.x < map->width && mod(head->pos.x - min_x, map->width, 1) < 6){
+                scrDat->pos.x = mod(min_x - 1, map->width, scrDat->isXRepeat);
+                do_update = 1;
+            }
+            break;
+        case RIGHT:
+            if(scrDat->size.x < map->width && mod(max_x - head->pos.x, map->width, 1) < 6){
+                scrDat->pos.x = mod(mod(max_x + 1, map->width, scrDat->isXRepeat) - scrDat->size.x, map->width, true);
+                do_update = 1; //1 equal true :D
+            }
+            break;
+        case UP:
+            if(scrDat->size.y < map->height && mod(head->pos.y - min_y, map->height, 1) < 6){
+                scrDat->pos.y = mod(min_y - 1, map->height, scrDat->isYRepeat);
+                do_update = 1;
+            }
+            break;
+        case DOWN:
+            if(scrDat->size.y < map->height && mod(max_y - head->pos.y, map->height, 1) < 6){
+                scrDat->pos.y = mod(mod(max_y + 1, map->height, scrDat->isYRepeat) - scrDat->size.y, map->height, true);
+                do_update = 1; //1 equal true :D
+            }
+            break;
+        default:
+            //printf("Something went wrong. Direction value is %d.\n", d);
+            break;
+        }
+    }
+
+    if(do_update){
+        Pos pos;
+        for (pos.y = scrDat->pos.y; pos.y < scrDat->pos.y + scrDat->size.y; pos.y++){
+            printf("\e[%d;0H\e[ K", pos.y); //Clear the screen line
+            for (pos.x = scrDat->pos.x; pos.x < scrDat->pos.x + scrDat->size.x; pos.x += 2){
+                if(pos.x < scrDat->size.x + map->width || scrDat->isXRepeat){
+                    printChunk(map->matrix[pos.x%map->width][pos.y&map->height], pos, scrDat);
+                }
+            }
+            if(pos.y >= scrDat->size.y && !scrDat->isYRepeat){
+                break;
+            }
+        }
+        while(food->next->next != NULL){
+            chunk c;
+            food = food->next;
+            //c.chars[0].bytes.c[0] = 'X';
+            c.chars[0].bytes.c[0] = 'X';
+            c.chars[0].bytes.c[0] = 'X';
+            printf(green);
+            printChunk(c, food->pos, scrDat);
+            printf("\e[0m");
+        }
     }
 }
 
-//Tick the game, step the snake, collect and place food.
-//check new direction
-//update display
-//uppdate food state
-//step snake
-void tick(Matrix *map, screenData *scrDat, snakeChain *snake, Direction *d){
+void getControl(screenData *scrDat, Direction *direction){
+    int i;
+    while(i = getNextChar(), i != EOF){
+        Direction next = NONE;
+        switch (i)
+        {
+        case 'a':
+            next = LEFT;
+            break;
+        
+        case 's':
+            next = DOWN;
+            break;
+        
+        case 'w':
+            next = UP;
+            break;
+        
+        case 'd':
+            next = RIGHT;
+            break;
+        
+        default:
+            next = NONE;
+            continue; //we don't have to registrane a non command...
+        }
 
+        if(next == *direction){
+            scrDat->commands[0] = NONE;
+            scrDat->commands[1] = NONE;
+            continue;
+        }
+
+        // [a && b || c]  =  [c || a && b]  =  [(a && b) || c]
+        if(((*direction == UP || *direction == DOWN) && (next == RIGHT || next == LEFT))
+        || ((*direction == RIGHT || *direction == LEFT) && (next == UP || next == DOWN))){
+            scrDat->commands[0] = next;
+        }
+        else
+        {
+            if(scrDat->commands[0] != NONE){
+                scrDat->commands[1] = next;
+            }
+        }
+    }
+}
+
+int isAir(chunk c){
+    return c.chars[0].bytes.c[0] == ' ' && c.chars[1].bytes.c[0] == ' ';
+}
+
+void updateFood(Matrix *map, int *foodTick, int feedAmount, Food *firstFood, snakeChain *firstSnake, screenData *scrDat){
+    if((*foodTick)++ > feedAmount){
+        *foodTick = 0;
+        for(int i = 0; i < 128; i++){
+            Pos pos;
+            int isFree = 1;
+            Food *food = firstFood;
+            snakeChain *snake = firstSnake;
+            pos.x = rand()%map->width;
+            pos.y = rand()%map->height;
+
+            if(!isAir(map->matrix[pos.x][pos.y])){
+                continue;
+            }
+            while (food->next->next != NULL)
+            {
+                food = food->next;
+                if(food->pos.x == pos.x && food->pos.y == pos.y){
+                    isFree = false;
+                    break;
+                }
+            }
+            if(!isFree){
+                continue;
+            }
+            while(snake != NULL){
+                if(snake->pos.x == pos.x && snake->pos.y == pos.y){
+                    isFree = false;
+                    break;
+                }
+                snake = snake->next;
+            }
+            if(!isFree){
+                continue;
+            }
+            //pos is available
+            {
+                Food *new = malloc(sizeof(Food));
+                if(new != NULL){
+                    chunk c;
+                    new->next = food->next;
+                    food->next = new;
+                    new->pos = pos;
+                    c.chars[0].bytes.c[0] = 'X';
+                    c.chars[0].bytes.c[0] = 'X';
+                    printf(green);
+                    print(c, pos, scrDat, map->width, map->height);
+                    printf("\e[0m");
+                }
+                break;
+            }
+        }
+    }
+}
+
+//EOF fatal error, 1 game over
+int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, Food *food, int canBite){
+    Pos pos = head->pos;
+    switch (d)
+    {
+    case UP:
+        pos.y++;
+        break;
+    case DOWN:
+        pos.y--;
+        break;
+    case LEFT:
+        pos.x--;
+        break;
+    case RIGHT:
+        pos.x++;
+        break;
+    default:
+        return EOF;
+        break;
+    }
+    if(pos.x < 0 || pos.x >= map->width){
+        if(scrDat->repeatMap){
+            pos.x = mod(pos.x, map->width, true);
+        }
+        else
+        {
+            return 1; //GAME OVER reached map end;
+        }
+    }
+    if(pos.y < 0 || pos.y >= map->height){
+        if(scrDat->repeatMap){
+            pos.y = mod(pos.y, map->height, true);
+        }
+        else
+        {
+            return 1; //GAME OVER reached map end;
+        }
+    }
+    
+    if(isAir(map->matrix[pos.x][pos.y])){
+        int isFood = 0;
+        snakeChain *snake = head;
+        Pos tmp_pos1 = head->pos, tmp_pos2;
+        while(food->next->next != NULL){
+            if(food->next->pos.x == pos.x && food->next->pos.y == pos.y){
+                Food *current = food->next;
+                isFood = true;
+                food->next = food->next->next;
+                free(current); //Snake ate this food. It is safe to free;
+                break;
+            }
+            food = food->next;
+        }
+        while (snake->next != 0)
+        {
+            chunk c;
+            if(snake != head && snake->pos.x == head->pos.x && snake->pos.y == head->pos.y){
+                if(snake->next != NULL){
+                    if(canBite){
+                        snakeChain *current = snake;
+                        snake = snake->next;
+                        current->next = NULL;
+                        while (snake != NULL)
+                        {
+                            current = snake;
+                            snake = snake->next;
+                            free(current);
+                        }
+                    }
+                    else
+                    {
+                        return 1; //GAME OVER snake hit itself;
+                    }
+                }else
+                {
+                    isFood = false;
+                }
+                
+                
+            }
+            snake = snake->next;
+            tmp_pos2 = snake->pos;
+            snake->pos = tmp_pos1;
+            tmp_pos1 = tmp_pos2;
+
+            c.chars[0].bytes.c[0] = '>';
+            c.chars[0].bytes.c[0] = '<';            
+            if(snake->next == NULL && isFood){
+                isFood = false;
+                snake->next = malloc(sizeof(snake));
+                if(snake->next == NULL){
+                    return EOF;
+                }
+                snake->next->next = NULL;
+                snake->pos.x = -1;
+                snake->pos.y = -1;
+            }
+            if(snake->pos.x == -1){
+                continue;   //don't render snake part with initial position
+            }
+            printf(blue);
+            print(c, snake->pos, scrDat, map->width, map->height); //TODO direction snake
+            printf("\e[0m");
+
+        }
+        if(tmp_pos2.x != -1){
+            chunk c; 
+            c.chars[0].bytes.c[0] = ' ';
+            c.chars[0].bytes.c[0] = ' ';
+            print(c, tmp_pos2, scrDat, map->width, map->height); //set this to air.
+        }
+        chunk c;
+        c.chars[0].bytes.c[0] = '(';
+        c.chars[0].bytes.c[0] = ')';
+        printf(blue);
+        print(c, head->pos, scrDat, map->width, map->height); //TODO direction snake
+        printf("\e[0m");
+    }
+    else
+    {
+        return 1; //GAME OVER hit the wall;
+    }
+    return 0;
 }
 
 //------------config loader------------
 
-int loadConfig(int *tickSpeed, int *repeatMap){
+int loadConfig(int *tickSpeed, int *repeatMap, int *feedAmount, int *canBite){
     FILE *config;
     config = fopen("config.cfg", "r");
     //int stillFile = 1; //boolean to show file is ended...
@@ -245,6 +564,12 @@ int loadConfig(int *tickSpeed, int *repeatMap){
         else if(strncmp(name, "repeatMap", 10) == 0){
             fscanf(config, " %d", repeatMap);
         }
+        else if(strncmp(name, "feed_amount", 12) == 0){
+            fscanf(config, " %d", feedAmount);
+        }
+        else if(strncmp(name, "can_bite", 9) == 0){
+            fscanf(config, " %d", canBite);
+        }
         else{
             printf("Unknown keyword: %s", name);
         }
@@ -254,17 +579,75 @@ int loadConfig(int *tickSpeed, int *repeatMap){
 
 
 
-//------------LOOP METHOD--------------
+//------------LOOP METHODs--------------
 
-int loop(Matrix *matrix, int tickspeed){
+//Tick the game, step the snake, collect and place food.
+//check new direction
+//update display
+//update food state
+//step snake
+int tick(Matrix *map, screenData *scrDat, snakeChain *snake, Direction *d, Food *food, int feedAmount, int canBite){
+    static int foodTick = 0;
+    getControl(scrDat, d);
+    if(scrDat->commands[0] != NONE){
+        *d = scrDat->commands[0];
+    }
+    updateScreen(map, scrDat, snake, *d, NULL); // TODO non-null object
+    if(d == NONE){
+        chunk c;
+        c.chars[0].bytes.c[0] = '(';
+        c.chars[0].bytes.c[0] = ')';
+        printf(blue);
+        print(c, snake->pos, scrDat, map->width, map->height);
+        printf("\e[0m");
+        return 0; // waiting for user input.
+    }
+    updateFood(map, &foodTick, feedAmount, food, snake, scrDat);
+    updateSnake(map, scrDat, *d, snake, food, canBite);
+    return 0;
+}
+
+int loop(Matrix *matrix, int tickspeed, int repeatMap, int feedAmount, int canBite){
 
     Direction d = DOWN;
     screenData scrDat;
-    snakeChain snake;   //TODO init snake, screen data
+    snakeChain snake, *chain;
+    Food food;
+    food.next = malloc(sizeof(Food));
+    if(food.next == NULL){
+        return -1;
+    }
+    food.next->next = NULL; //Create food guards.
+
+    while(true){
+        Pos p;
+        p.x = rand()%matrix->width;
+        p.y = rand()&matrix->height;
+        if(isAir(matrix->matrix[p.x][p.y])){
+            snake.pos = p;
+            break;
+        }
+    }
+    chain = &snake;
+    for(int i = 1; i < 3; i++){
+        Pos p;
+        p.x = -1;
+        p.y = -1;
+        chain->next = malloc(sizeof(snakeChain));
+        if(chain->next == NULL){
+            return -1;
+        }
+        chain = chain->next;
+        chain->pos = p;
+    }
+
     scrDat.size.x = 0;
     scrDat.size.y = 0;
+    scrDat.repeatMap = repeatMap;
     while(42){
-        tick(matrix, &scrDat, &snake, &d);
+        if(tick(matrix, &scrDat, &snake, &d, &food, feedAmount, canBite)){
+            break;
+        }
         unisleep(tickspeed); //Special sleep to work both in windows and unix environment
     }
     return 0;
@@ -312,11 +695,11 @@ int core(int argc, char const *argv[])
 
     initMultiplatform(); // init stuff.
 
-    int tickspeed = 100, repeatMap = 0; // if no config, default value
+    int tickspeed = 100, repeatMap = 0, feedAmount = 20, canBite = true; // if no config, default value
 
     //----load config----
 
-    if(loadConfig(&tickspeed, &repeatMap)){
+    if(loadConfig(&tickspeed, &repeatMap, &feedAmount, &canBite)){
         printf("Error while loading config...");
     }
 
@@ -343,10 +726,14 @@ int core(int argc, char const *argv[])
         readFile(f, &map);
     }
 
+    //----start game----
+
+    loop(&map, tickspeed, repeatMap, feedAmount, canBite);
+
     //test code
-    printf("map:\n");
-    _testprint(&map);
-    _print1char(&map);
+    //printf("map:\n");
+    //_testprint(&map);
+    //_print1char(&map);
     /* code */
     //free stuff
     rmMatrix(&map);

@@ -19,7 +19,7 @@
 //and be able to compile on multiple OS like linux and windows.
 
 //Init some platform dependent configurations
-int initMultiplatform(){
+void initMultiplatform(void){
     #ifdef __linux__
     struct termios info;          // This is from stackoverflow
     tcgetattr(0, &info);          /* get current terminal attirbutes; 0 is the file descriptor for stdin */
@@ -31,7 +31,7 @@ int initMultiplatform(){
 }
 
 //returns the char or EOF
-int getNextChar(){
+int getNextChar(void){
     #ifdef __linux__
     return getchar();
     #else
@@ -45,7 +45,7 @@ int getNextChar(){
 }
 
 
-struct Vec2i getWindowSize(){
+struct Vec2i getWindowSize(void){
     struct Vec2i size;
     #ifdef __linux__
     struct winsize info;
@@ -73,3 +73,21 @@ void unisleep(int milisec){
 }
 
 
+//NOT TRUE MOD FUNCTION
+int mod(int i, int base, int repeat){
+    if(i < 0){
+        if(repeat){
+           return i + base;
+        }
+        return 0;
+    }
+    else if(i >= base){
+        if(repeat){
+            return i - base;
+        }
+        return base - 1;
+    }
+    else{
+        return i;
+    }
+}

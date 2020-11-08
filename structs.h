@@ -1,7 +1,8 @@
 #ifndef SNAKE_STRUCTS
 #define SNAKE_STRUCTS
 
-typedef enum Direcion{
+typedef enum Direction{
+    NONE = 0,
     UP,
     RIGHT,
     DOWN,
@@ -55,11 +56,11 @@ typedef struct chunkMatrix{
     int height;
 }Matrix;
 
-typedef struct food{
+typedef struct Food{
     Pos pos;
     int rand;
-    struct food *next;
-}food;
+    struct Food *next;
+}Food;
 
 typedef struct screenData{
     Pos pos;
@@ -67,6 +68,7 @@ typedef struct screenData{
     int repeatMap;
     int isXRepeat;
     int isYRepeat;
+    Direction commands[2];
 }screenData;
 
 #endif
