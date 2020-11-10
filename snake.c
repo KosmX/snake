@@ -165,9 +165,9 @@ void rmMatrix(Matrix *map){
 //witch screen coordinates?
 //just the screen data
 void printChunk(chunk ch, Pos pos, screenData *scrDat){
-    pos.x -= scrDat->pos.x;
-    pos.y -= scrDat->pos.y;
-    if(pos.x < 0 || pos.y < 0 || pos.x >= scrDat->pos.x || pos.y >= scrDat->pos.y){
+    //pos.x -= scrDat->pos.x;
+    //pos.y -= scrDat->pos.y;
+    if(pos.x < 0 || pos.y < 0 || pos.x >= scrDat->size.x || pos.y >= scrDat->size.y){
         return; //if pos is not on the screen, just do nothing.
     }
     printf("\e[%d;%dH", pos.x * 2, pos.y);
@@ -274,7 +274,7 @@ void updateScreen(Matrix *map, screenData *scrDat, snakeChain *head, Direction d
             printf("\e[%d;0H\e[ K", pos.y); //Clear the screen line
             for (pos.x = scrDat->pos.x; pos.x < scrDat->pos.x + scrDat->size.x; pos.x += 2){
                 if(pos.x < scrDat->size.x + map->width || scrDat->isXRepeat){
-                    printChunk(map->matrix[pos.x%map->width][pos.y&map->height], pos, scrDat);
+                    print(map->matrix[pos.x%map->width][pos.y&map->height], pos, scrDat, map->width, map->height);
                 }
             }
             if(pos.y >= scrDat->size.y && !scrDat->isYRepeat){
