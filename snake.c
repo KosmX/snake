@@ -170,7 +170,7 @@ void printChunk(chunk ch, Pos pos, screenData *scrDat){
     if(pos.x < 0 || pos.y < 0 || pos.x >= scrDat->size.x || pos.y >= scrDat->size.y){
         return; //if pos is not on the screen, just do nothing.
     }
-    printf("\e[%d;%dH", pos.x * 2, pos.y);
+    printf("\e[%d;%dH", pos.y, pos.x *2);
     for(int i = 0; i < 2; i++){
         printChar(ch.chars[i]);
     }
@@ -201,7 +201,7 @@ void print(chunk ch, Pos pos, screenData *scrDat, int width, int height){
 int updateScreenSize(Matrix *map, screenData *scrDat){
     struct Vec2i size = getWindowSize();
     size.x = size.x / 2;
-    size.y = size.y / 2;
+    size.y = size.y;// / 2;//Why half?
     if(size.x == scrDat->size.x && size.y == scrDat->size.y){
         return 0; //no change happened
     }
@@ -271,13 +271,13 @@ void updateScreen(Matrix *map, screenData *scrDat, snakeChain *head, Direction d
     if(do_update){
         Pos pos;
         for (pos.y = scrDat->pos.y; pos.y < scrDat->pos.y + scrDat->size.y; pos.y++){
-            printf("\e[%d;0H\e[ K", pos.y); //Clear the screen line
-            for (pos.x = scrDat->pos.x; pos.x < scrDat->pos.x + scrDat->size.x; pos.x += 2){
-                if(pos.x < scrDat->size.x + map->width || scrDat->isXRepeat){
-                    print(map->matrix[pos.x%map->width][pos.y&map->height], pos, scrDat, map->width, map->height);
+            printf("\e[0;%dH\e[K", pos.y - scrDat->pos.y); //Clear the screen line
+            for (pos.x = scrDat->pos.x; pos.x < scrDat->pos.x + scrDat->size.x; pos.x++){
+                if(pos.x < map->width || scrDat->isXRepeat){
+                    print(map->matrix[pos.x%map->width][pos.y%map->height], pos, scrDat, map->width, map->height);
                 }
             }
-            if(pos.y >= scrDat->size.y && !scrDat->isYRepeat){
+            if(pos.y >= map->height && !scrDat->isYRepeat){
                 break;
             }
         }
@@ -729,14 +729,19 @@ int core(int argc, char const *argv[])
 
     //----start game----
 
+
+    _testprint(&map);
+
     loop(&map, tickspeed, repeatMap, feedAmount, canBite);
 
     //test code
     //printf("map:\n");
-    //_testprint(&map);
     //_print1char(&map);
     /* code */
     //free stuff
+
+
+
     rmMatrix(&map);
 
     return 0;
