@@ -347,7 +347,6 @@ int isAir(chunk c){
 
 void updateFood(Matrix *map, int *foodTick, int feedAmount, Food *firstFood, snakeChain *firstSnake, screenData *scrDat){
     if((*foodTick)++ > feedAmount){
-        *foodTick = 0;
         for(int i = 0; i < 128; i++){
             Pos pos;
             int isFree = 1;
@@ -382,6 +381,8 @@ void updateFood(Matrix *map, int *foodTick, int feedAmount, Food *firstFood, sna
             }
             //pos is available
             {
+                
+                *foodTick = 0;
                 Food *new = malloc(sizeof(Food));
                 if(new != NULL){
                     chunk c;
@@ -561,7 +562,7 @@ int loadConfig(int *tickSpeed, int *repeatMap, int *feedAmount, int *canBite){
         else if(strncmp(name, "tickspeed", 10) == 0){
             fscanf(config, " %d", tickSpeed);
         }
-        else if(strncmp(name, "repeatMap", 10) == 0){
+        else if(strncmp(name, "repeat_map", 10) == 0){
             fscanf(config, " %d", repeatMap);
         }
         else if(strncmp(name, "feed_amount", 12) == 0){
