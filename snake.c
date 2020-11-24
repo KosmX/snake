@@ -3,6 +3,7 @@
 #include<string.h>
 #include<locale.h>
 #include<ctype.h>
+#include<time.h>
 
 #include "structs.h"
 #include "multiplatformLib.h"
@@ -125,8 +126,9 @@ int readFile(FILE *file, Matrix *matrix){
             return EOF-1;
         }
         for(int n = 0; n < lineCount; n++){
+            matrix->matrix[i][n].isFood = 0; //That is NOT food
             for(int a = 0; a < 2; a++){
-                matrix->matrix[i][n].chars[a].bytes.c[0] = ' ';
+                matrix->matrix[i][n].data.chars[a].bytes.c[0] = ' ';
             }
         }
     }
@@ -143,7 +145,7 @@ int readFile(FILE *file, Matrix *matrix){
         }
         else{
             for(int charPos = 0; charPos < 4; charPos++){
-                matrix->matrix[pos.x/2][pos.y].chars[pos.x%2].bytes.c[charPos] = current->value.bytes.c[charPos];
+                matrix->matrix[pos.x/2][pos.y].data.chars[pos.x%2].bytes.c[charPos] = current->value.bytes.c[charPos];
             }
             pos.x++; 
         }
@@ -170,12 +172,20 @@ void printChunk(chunk ch, Pos pos, screenData *scrDat){
     if(pos.x < 0 || pos.y < 0 || pos.x >= scrDat->size.x || pos.y >= scrDat->size.y){
         return; //if pos is not on the screen, just do nothing.
     }
-    printf("\e[%d;%dH", pos.y, pos.x *2);
+    printf("\e[%d;%dH", pos.y+1, pos.x *2+1);
     for(int i = 0; i < 2; i++){
-        printChar(ch.chars[i]);
+        printChar(ch.data.chars[i]);
     }
+    #ifdef DEBUG
+    printf("\e[0;0H\n"); //to update terminal after EVERY print but drasticlally slowing it down
+    #endif
 }
 
+/**Print characters to a map pos
+ * 
+ * It will check if the character is on the screen
+ * 
+ */
 void print(chunk ch, Pos pos, screenData *scrDat, int width, int height){
     pos.x = pos.x - scrDat->pos.x;
     if(pos.x < 0){
@@ -198,6 +208,10 @@ void print(chunk ch, Pos pos, screenData *scrDat, int width, int height){
     printChunk(ch, pos, scrDat);
 }
 
+void printSnakeChunk(snakeChain *snake){
+    //TODO
+}
+
 int updateScreenSize(Matrix *map, screenData *scrDat){
     struct Vec2i size = getWindowSize();
     size.x = size.x / 2;
@@ -215,7 +229,7 @@ int updateScreenSize(Matrix *map, screenData *scrDat){
 }
 
 //Update screen if required 
-void updateScreen(Matrix *map, screenData *scrDat, snakeChain *head, Direction d, Food *food){
+void updateScreen(Matrix *map, screenData *scrDat, snakeChain *head, Direction d){
     int do_update;
     do_update = updateScreenSize(map, scrDat);
 
@@ -271,25 +285,15 @@ void updateScreen(Matrix *map, screenData *scrDat, snakeChain *head, Direction d
     if(do_update){
         Pos pos;
         for (pos.y = scrDat->pos.y; pos.y < scrDat->pos.y + scrDat->size.y; pos.y++){
-            printf("\e[0;%dH\e[K", pos.y - scrDat->pos.y); //Clear the screen line
+            printf("\e[%d;0H\e[K", pos.y - scrDat->pos.y + 1); //Clear the screen line
+            if(pos.y >= map->height && !scrDat->isYRepeat){
+                break;
+            }
             for (pos.x = scrDat->pos.x; pos.x < scrDat->pos.x + scrDat->size.x; pos.x++){
                 if(pos.x < map->width || scrDat->isXRepeat){
                     print(map->matrix[pos.x%map->width][pos.y%map->height], pos, scrDat, map->width, map->height);
                 }
             }
-            if(pos.y >= map->height && !scrDat->isYRepeat){
-                break;
-            }
-        }
-        while(food->next->next != NULL){
-            chunk c;
-            food = food->next;
-            //c.chars[0].bytes.c[0] = 'X';
-            c.chars[0].bytes.c[0] = 'X';
-            c.chars[0].bytes.c[0] = 'X';
-            printf(green);
-            printChunk(c, food->pos, scrDat);
-            printf("\e[0m");
         }
     }
 }
@@ -341,68 +345,54 @@ void getControl(screenData *scrDat, Direction *direction){
     }
 }
 
-int isAir(chunk c){
-    return c.chars[0].bytes.c[0] == ' ' && c.chars[1].bytes.c[0] == ' ';
+int isNotWall(chunk c){
+    return c.isFood || (c.data.chars[0].bytes.c[0] == ' ' && c.data.chars[1].bytes.c[0] == ' ');
 }
 
-void updateFood(Matrix *map, int *foodTick, int feedAmount, Food *firstFood, snakeChain *firstSnake, screenData *scrDat){
+int isAir(chunk c){
+    return !c.isFood && isNotWall(c);
+}
+
+void updateFood(Matrix *map, int *foodTick, int feedAmount, snakeChain *firstSnake, screenData *scrDat){
     if((*foodTick)++ > feedAmount){
         for(int i = 0; i < 128; i++){
             Pos pos;
             int isFree = 1;
-            Food *food = firstFood;
             snakeChain *snake = firstSnake;
             pos.x = rand()%map->width;
             pos.y = rand()%map->height;
 
-            if(!isAir(map->matrix[pos.x][pos.y])){
-                continue;
-            }
-            while (food->next->next != NULL)
-            {
-                food = food->next;
-                if(food->pos.x == pos.x && food->pos.y == pos.y){
-                    isFree = false;
-                    break;
+            if(isAir(map->matrix[pos.x][pos.y])){
+                while(snake != NULL){
+                    if(snake->pos.x == pos.x && snake->pos.y == pos.y){
+                        isFree = false;
+                        break;
+                    }
+                    snake = snake->next;
                 }
-            }
-            if(!isFree){
-                continue;
-            }
-            while(snake != NULL){
-                if(snake->pos.x == pos.x && snake->pos.y == pos.y){
-                    isFree = false;
-                    break;
+                if(!isFree){
+                    continue;
                 }
-                snake = snake->next;
-            }
-            if(!isFree){
-                continue;
-            }
-            //pos is available
-            {
-                
-                *foodTick = 0;
-                Food *new = malloc(sizeof(Food));
-                if(new != NULL){
+                //pos is available
+                {
+                    *foodTick = 0;
                     chunk c;
-                    new->next = food->next;
-                    food->next = new;
-                    new->pos = pos;
-                    c.chars[0].bytes.c[0] = 'X';
-                    c.chars[0].bytes.c[0] = 'X';
+                    map->matrix[pos.x][pos.y].isFood = 1;
+                    map->matrix[pos.x][pos.y].data.FRand = rand();
+                    c.data.chars[0].bytes.c[0] = 'X';
+                    c.data.chars[0].bytes.c[0] = 'X';
                     printf(green);
                     print(c, pos, scrDat, map->width, map->height);
                     printf("\e[0m");
+                    break;
                 }
-                break;
             }
         }
     }
 }
 
 //EOF fatal error, 1 game over
-int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, Food *food, int canBite){
+int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, int canBite){
     Pos pos = head->pos;
     switch (d)
     {
@@ -441,20 +431,10 @@ int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, 
         }
     }
     
-    if(isAir(map->matrix[pos.x][pos.y])){
-        int isFood = 0;
+    if(isNotWall(map->matrix[pos.x][pos.y])){
+        int isFood = map->matrix[pos.x][pos.y].isFood;
         snakeChain *snake = head;
         Pos tmp_pos1 = head->pos, tmp_pos2;
-        while(food->next->next != NULL){
-            if(food->next->pos.x == pos.x && food->next->pos.y == pos.y){
-                Food *current = food->next;
-                isFood = true;
-                food->next = food->next->next;
-                free(current); //Snake ate this food. It is safe to free;
-                break;
-            }
-            food = food->next;
-        }
         while (snake->next != 0)
         {
             snake = snake->next;
@@ -487,8 +467,8 @@ int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, 
             snake->pos = tmp_pos1;
             tmp_pos1 = tmp_pos2;
 
-            c.chars[0].bytes.c[0] = '>';
-            c.chars[0].bytes.c[0] = '<';            
+            c.data.chars[0].bytes.c[0] = '>';
+            c.data.chars[0].bytes.c[0] = '<';            
             if(snake->next == NULL && isFood){
                 isFood = false;
                 snake->next = malloc(sizeof(snake));
@@ -509,13 +489,13 @@ int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, 
         }
         if(tmp_pos2.x != -1){
             chunk c; 
-            c.chars[0].bytes.c[0] = ' ';
-            c.chars[0].bytes.c[0] = ' ';
+            c.data.chars[0].bytes.c[0] = ' ';
+            c.data.chars[0].bytes.c[0] = ' ';
             print(c, tmp_pos2, scrDat, map->width, map->height); //set this to air.
         }
         chunk c;
-        c.chars[0].bytes.c[0] = '(';
-        c.chars[0].bytes.c[0] = ')';
+        c.data.chars[0].bytes.c[0] = '(';
+        c.data.chars[0].bytes.c[0] = ')';
         printf(blue);
         print(c, head->pos, scrDat, map->width, map->height); //TODO direction snake
         printf("\e[0m");
@@ -587,44 +567,40 @@ int loadConfig(int *tickSpeed, int *repeatMap, int *feedAmount, int *canBite){
 //update display
 //update food state
 //step snake
-int tick(Matrix *map, screenData *scrDat, snakeChain *snake, Direction *d, Food *food, int feedAmount, int canBite){
+int tick(Matrix *map, screenData *scrDat, snakeChain *snake, Direction *d, int feedAmount, int canBite){
     static int foodTick = 0;
     getControl(scrDat, d);
     if(scrDat->commands[0] != NONE){
         *d = scrDat->commands[0];
     }
-    updateScreen(map, scrDat, snake, *d, food);
-    if(d == NONE){
+    updateScreen(map, scrDat, snake, *d);
+    if(*d == NONE){
         chunk c;
-        c.chars[0].bytes.c[0] = '(';
-        c.chars[0].bytes.c[0] = ')';
+        c.data.chars[0].bytes.c[0] = '(';
+        c.data.chars[0].bytes.c[0] = ')';
         printf(blue);
         print(c, snake->pos, scrDat, map->width, map->height);
         printf("\e[0m");
         return 0; // waiting for user input.
     }
-    updateFood(map, &foodTick, feedAmount, food, snake, scrDat);
-    updateSnake(map, scrDat, *d, snake, food, canBite);
+    updateFood(map, &foodTick, feedAmount, snake, scrDat);
+    updateSnake(map, scrDat, *d, snake, canBite);
+    //printf("\e[0;0H\n"); //Update the terminal (mostly on Unix based systems)
+    fflush(stdout);
     return 0;
 }
 
 int loop(Matrix *matrix, int tickspeed, int repeatMap, int feedAmount, int canBite){
 
-    Direction d = DOWN;
+    Direction d = NONE; //Init with none
     screenData scrDat;
     snakeChain snake, *chain;
-    Food food;
-    food.next = malloc(sizeof(Food));
-    if(food.next == NULL){
-        return -1;
-    }
-    food.next->next = NULL; //Create food guards.
 
     while(true){
         Pos p;
         p.x = rand()%matrix->width;
         p.y = rand()&matrix->height;
-        if(isAir(matrix->matrix[p.x][p.y])){
+        if(isNotWall(matrix->matrix[p.x][p.y])){
             snake.pos = p;
             break;
         }
@@ -646,8 +622,10 @@ int loop(Matrix *matrix, int tickspeed, int repeatMap, int feedAmount, int canBi
     scrDat.size.x = 0;
     scrDat.size.y = 0;
     scrDat.repeatMap = repeatMap;
+    scrDat.commands[0] = NONE;
+    scrDat.commands[1] = NONE;
     while(42){
-        if(tick(matrix, &scrDat, &snake, &d, &food, feedAmount, canBite)){
+        if(tick(matrix, &scrDat, &snake, &d, feedAmount, canBite)){
             break;
         }
         unisleep(tickspeed); //Special sleep to work both in windows and unix environment
@@ -661,7 +639,8 @@ void _testprint(Matrix *map){
         for(int x = 0; x < map->width; x++){
             for(int i = 0; i < 2; i++){
                 //printf("%c", map->matrix[x][y].chars->bytes.c[i * 4]); //WTF... I didn't indexed correctly, but accidentaly I've got the right value...
-                printChar(map->matrix[x][y].chars[i]);
+                printChar(map->matrix[x][y].data.chars[i]);
+                //unisleep(1000);
             }
             //printf("|");
         }
@@ -675,12 +654,12 @@ void _print1char(Matrix *map){
         if(x >= 0 && y >= 0 && x < map->width && y < map->height){
             for(int i = 0;i < 2; i++){
                 printf("\nvalue: %hx, %hx, %hx, %hx\n",
-                (unsigned)map->matrix[x][y].chars[i].bytes.c[0],
-                (unsigned)map->matrix[x][y].chars[i].bytes.c[1],
-                (unsigned)map->matrix[x][y].chars[i].bytes.c[2],
-                (unsigned)map->matrix[x][y].chars[i].bytes.c[3]);
+                (unsigned)map->matrix[x][y].data.chars[i].bytes.c[0],
+                (unsigned)map->matrix[x][y].data.chars[i].bytes.c[1],
+                (unsigned)map->matrix[x][y].data.chars[i].bytes.c[2],
+                (unsigned)map->matrix[x][y].data.chars[i].bytes.c[3]);
                 printf("as character: \"");
-                printChar(map->matrix[x][y].chars[i]);
+                printChar(map->matrix[x][y].data.chars[i]);
                 printf("\"\n");
             }
         }
@@ -696,6 +675,8 @@ int core(int argc, char const *argv[])
     Matrix map;
 
     initMultiplatform(); // init stuff.
+
+    srand(time(0)); // bee a bit more random
 
     int tickspeed = 100, repeatMap = 0, feedAmount = 20, canBite = true; // if no config, default value
 
@@ -759,6 +740,7 @@ int main(int argc, char const *argv[])
 int main(int argc, char const *argv[])
 {
     //2 + 3;  //... this does nothing...
+    #ifdef DEBUG
     int ret;
     char const *array[] = {argv[0], "map1.txt"};
     ret = core(2, array);
@@ -767,4 +749,7 @@ int main(int argc, char const *argv[])
     //return 0, ret; //Miért van ez a függvény tele szeméttel??? pl 0, smt...
 
     return ret; // így szép.
+    #else
+    return core(argc, argv);
+    #endif
 }

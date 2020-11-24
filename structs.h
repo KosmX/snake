@@ -31,7 +31,13 @@ typedef union unichar{
 }unichar;
 typedef struct chunk  //struct stores 2 chars and it's color :D
 {
-    unichar chars[2];
+    int isFood :1;
+    union
+    {
+        unichar chars[2];
+        int FRand;
+    }data;
+    
     /*
     struct{
         int fg : 3; //3 bit color codes.
@@ -56,11 +62,11 @@ typedef struct chunkMatrix{
     int height;
 }Matrix;
 
-typedef struct Food{
+/*typedef struct Food{
     Pos pos;
     int rand;
     struct Food *next;
-}Food;
+}Food;*/
 
 typedef struct screenData{
     Pos pos;
