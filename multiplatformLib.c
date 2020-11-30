@@ -19,32 +19,48 @@
 //and be able to compile on multiple OS like linux and windows.
 
 //Init some platform dependent configurations
-void initMultiplatform(void){
+
+void refreshScreen(void){
     #ifdef __linux__
-    struct termios info;          // This is from stackoverflow
-    tcgetattr(0, &info);          /* get current terminal attirbutes; 0 is the file descriptor for stdin */
-    info.c_lflag &= ~ICANON;      /* disable canonical mode */
-    info.c_cc[VMIN] = 0;          /* don't wait for keypress, return EOF instead */
-    info.c_cc[VTIME] = 0;         /* no timeout */
-    tcsetattr(0, TCSANOW, &info); /* set immediately */
+    //TODO
     #endif
 }
+
+//Init platform specific IO
+void initMultiplatform(void){
+    #ifdef __linux__
+    struct termios info;
+    tcgetattr(0, &info); //get attr
+    info.c_lflag &= ~ICANON; //turn off canonical mode
+    info.c_lflag &= ~ECHO;
+    tcsetattr(0, TCSANOW, &info); //set attr
+    setbuf(stdin, NULL); //???
+    #endif
+}
+#ifdef __linux__
+//linux equivalent conio _kbhit
+int _kbhit(){
+    int kbhits;
+    ioctl(0, FIONREAD, &kbhits);
+    return kbhits;
+}
+#endif
 
 //returns the char or EOF
 int getNextChar(void){
-    #ifdef __linux__
-    return getchar();
-    #else
     if(_kbhit()){
+        #ifdef __linux__
+        return getchar();
+        #else
         return _getch();
-    }
+        #endif
+    } 
     else{
         return EOF;
     }
-    #endif
 }
 
-
+//Returns with the size of the terminal
 struct Vec2i getWindowSize(void){
     struct Vec2i size;
     #ifdef __linux__
@@ -61,6 +77,7 @@ struct Vec2i getWindowSize(void){
     return size;
 }
 
+//sleem
 void unisleep(int milisec){
     #ifdef __linux__
     struct timespec ts;
@@ -74,6 +91,7 @@ void unisleep(int milisec){
 
 
 //NOT TRUE MOD FUNCTION
+//makes a false modulus what is always positive
 int mod(int i, int base, int repeat){
     if(i < 0){
         if(repeat){

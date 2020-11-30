@@ -1,3 +1,4 @@
+#include "debugmalloc.h"
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
@@ -9,7 +10,6 @@
 #include "multiplatformLib.h"
 
 //debugmalloc from infoc
-#include "debugmalloc.h"
 
 #define green "\e[0;32m"
 #define blue "\e[0;34m"
@@ -17,7 +17,6 @@
 //There are lots of hints on https://infoc.eet.bme.hu/
 
 //#define windows 1 with #ifndef __linux__ solved...
-//typedef unsigned long long int pointer; //Not optimal and not required. sometimes even the worst idea...
 
 //-----------methods--------------
 
@@ -72,7 +71,9 @@ int readFile(FILE *file, Matrix *matrix){
         if(next == NULL){
             return EOF;
         }
-        memset(next, 0, sizeof(linkedString)); //TODO remove after debugging
+        #ifdef DEBUG
+        memset(next, 0, sizeof(linkedString)); //fill it with zeros. only in debug mode
+        #endif
         next->next = 0;
         while (c == '\r')
         {
@@ -235,12 +236,12 @@ void updateScreen(Matrix *map, screenData *scrDat, snakeChain *head, Direction d
 
     if(do_update){
         if(scrDat->size.x < map->width){
-            scrDat->pos.x = mod((head->pos.x + scrDat->size.x) / 2 ,map->width, scrDat->repeatMap);
+            scrDat->pos.x = mod((head->pos.x + scrDat->size.x) - scrDat->size.x / 2 ,map->width, scrDat->repeatMap);
         }else{
             scrDat->pos.x = 0;
         }
         if(scrDat->size.y < map->height){
-            scrDat->pos.y = mod((head->pos.y + scrDat->size.y) / 2 ,map->height, scrDat->repeatMap);
+            scrDat->pos.y = mod((head->pos.y + scrDat->size.y) - scrDat->size.y / 2 ,map->height, scrDat->repeatMap);
         }else{
             scrDat->pos.y = 0;
         }
@@ -322,7 +323,12 @@ void getControl(screenData *scrDat, Direction *direction){
         
         default:
             next = NONE;
-            continue; //we don't have to registrane a non command...
+            continue; //we don't have to registrate a non command...
+        }
+
+        if(*direction == NONE){
+            *direction = next;
+            continue;
         }
 
         if(next == *direction){
@@ -397,10 +403,10 @@ int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, 
     switch (d)
     {
     case UP:
-        pos.y++;
+        pos.y--;
         break;
     case DOWN:
-        pos.y--;
+        pos.y++;
         break;
     case LEFT:
         pos.x--;
@@ -433,6 +439,7 @@ int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, 
     
     if(isNotWall(map->matrix[pos.x][pos.y])){
         int isFood = map->matrix[pos.x][pos.y].isFood;
+        head->pos = pos;
         snakeChain *snake = head;
         Pos tmp_pos1 = head->pos, tmp_pos2;
         while (snake->next != 0)
@@ -442,13 +449,13 @@ int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, 
             if(snake != head && snake->pos.x == head->pos.x && snake->pos.y == head->pos.y){
                 if(snake->next != NULL){
                     if(canBite){
-                        snakeChain *current = snake;
-                        snake = snake->next;
+                        snakeChain *current = snake, *tmp_snek = snake;
+                        tmp_snek = tmp_snek->next;
                         current->next = NULL;
-                        while (snake != NULL)
+                        while (tmp_snek != NULL)
                         {
-                            current = snake;
-                            snake = snake->next;
+                            current = tmp_snek;
+                            tmp_snek = tmp_snek->next;
                             free(current);
                         }
                     }
@@ -468,7 +475,7 @@ int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, 
             tmp_pos1 = tmp_pos2;
 
             c.data.chars[0].bytes.c[0] = '>';
-            c.data.chars[0].bytes.c[0] = '<';            
+            c.data.chars[1].bytes.c[0] = '<';            
             if(snake->next == NULL && isFood){
                 isFood = false;
                 snake->next = malloc(sizeof(snake));
@@ -490,12 +497,12 @@ int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, 
         if(tmp_pos2.x != -1){
             chunk c; 
             c.data.chars[0].bytes.c[0] = ' ';
-            c.data.chars[0].bytes.c[0] = ' ';
+            c.data.chars[1].bytes.c[0] = ' ';
             print(c, tmp_pos2, scrDat, map->width, map->height); //set this to air.
         }
         chunk c;
         c.data.chars[0].bytes.c[0] = '(';
-        c.data.chars[0].bytes.c[0] = ')';
+        c.data.chars[1].bytes.c[0] = ')';
         printf(blue);
         print(c, head->pos, scrDat, map->width, map->height); //TODO direction snake
         printf("\e[0m");
@@ -577,7 +584,7 @@ int tick(Matrix *map, screenData *scrDat, snakeChain *snake, Direction *d, int f
     if(*d == NONE){
         chunk c;
         c.data.chars[0].bytes.c[0] = '(';
-        c.data.chars[0].bytes.c[0] = ')';
+        c.data.chars[1].bytes.c[0] = ')';
         printf(blue);
         print(c, snake->pos, scrDat, map->width, map->height);
         printf("\e[0m");
@@ -737,8 +744,15 @@ int main(int argc, char const *argv[])
 }
 */
 
+/**
+ * debugger main function
+ * in debug mode, starts the core with correct params
+ * in release mode, it will use user input files.
+ */
 int main(int argc, char const *argv[])
 {
+    int walltest; //warning: unused variable ‘walltest’ [-Wunused-variable]
+
     //2 + 3;  //... this does nothing...
     #ifdef DEBUG
     int ret;
@@ -751,5 +765,6 @@ int main(int argc, char const *argv[])
     return ret; // így szép.
     #else
     return core(argc, argv);
+    debugmalloc_dump();
     #endif
 }

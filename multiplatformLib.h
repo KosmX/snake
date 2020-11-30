@@ -7,6 +7,8 @@ struct Vec2i getWindowSize(void);
 
 void initMultiplatform(void);
 
+void refreshScreen(void);
+
 int getNextChar(void);
 
 void unisleep(int milisec);
