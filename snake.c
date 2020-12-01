@@ -1,7 +1,8 @@
-#include "debugmalloc.h"
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+#include "debugmalloc.h"
+
 #include<locale.h>
 #include<ctype.h>
 #include<time.h>
@@ -386,7 +387,7 @@ void updateFood(Matrix *map, int *foodTick, int feedAmount, snakeChain *firstSna
                     map->matrix[pos.x][pos.y].isFood = 1;
                     map->matrix[pos.x][pos.y].data.FRand = rand();
                     c.data.chars[0].bytes.c[0] = 'X';
-                    c.data.chars[0].bytes.c[0] = 'X';
+                    c.data.chars[1].bytes.c[0] = 'X';
                     printf(green);
                     print(c, pos, scrDat, map->width, map->height);
                     printf("\e[0m");
@@ -439,9 +440,14 @@ int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, 
     
     if(isNotWall(map->matrix[pos.x][pos.y])){
         int isFood = map->matrix[pos.x][pos.y].isFood;
-        head->pos = pos;
+        if(isFood){
+            map->matrix[pos.x][pos.y].isFood = false;
+            map->matrix[pos.x][pos.y].data.chars[0].bytes.c[0] = ' ';
+            map->matrix[pos.x][pos.y].data.chars[1].bytes.c[0] = ' ';
+        }
         snakeChain *snake = head;
         Pos tmp_pos1 = head->pos, tmp_pos2;
+        head->pos = pos;
         while (snake->next != 0)
         {
             snake = snake->next;
@@ -449,13 +455,15 @@ int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, 
             if(snake != head && snake->pos.x == head->pos.x && snake->pos.y == head->pos.y){
                 if(snake->next != NULL){
                     if(canBite){
-                        snakeChain *current = snake, *tmp_snek = snake;
-                        tmp_snek = tmp_snek->next;
+                        snakeChain *current = snake, *tmp_snek = snake->next;
                         current->next = NULL;
                         while (tmp_snek != NULL)
                         {
                             current = tmp_snek;
                             tmp_snek = tmp_snek->next;
+                            c.data.chars[0].bytes.c[0] = ' ';
+                            c.data.chars[1].bytes.c[0] = ' ';
+                            print(c, current->pos, scrDat, map->width, map->height);
                             free(current);
                         }
                     }
@@ -478,13 +486,12 @@ int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, 
             c.data.chars[1].bytes.c[0] = '<';            
             if(snake->next == NULL && isFood){
                 isFood = false;
-                snake->next = malloc(sizeof(snake));
+                snake->next = malloc(sizeof(snakeChain));
                 if(snake->next == NULL){
                     return EOF;
                 }
                 snake->next->next = NULL;
-                snake->pos.x = -1;
-                snake->pos.y = -1;
+                snake->next->pos = tmp_pos1;
             }
             if(snake->pos.x == -1){
                 continue;   //don't render snake part with initial position
@@ -580,6 +587,8 @@ int tick(Matrix *map, screenData *scrDat, snakeChain *snake, Direction *d, int f
     if(scrDat->commands[0] != NONE){
         *d = scrDat->commands[0];
     }
+    scrDat->commands[0] = scrDat->commands[1];
+    scrDat->commands[1] = NONE;
     updateScreen(map, scrDat, snake, *d);
     if(*d == NONE){
         chunk c;
@@ -591,7 +600,10 @@ int tick(Matrix *map, screenData *scrDat, snakeChain *snake, Direction *d, int f
         return 0; // waiting for user input.
     }
     updateFood(map, &foodTick, feedAmount, snake, scrDat);
-    updateSnake(map, scrDat, *d, snake, canBite);
+    if(updateSnake(map, scrDat, *d, snake, canBite)){
+        *d = NONE;
+        //TODO Game over or remove 1 hp or ...
+    }
     //printf("\e[0;0H\n"); //Update the terminal (mostly on Unix based systems)
     fflush(stdout);
     return 0;
@@ -732,7 +744,7 @@ int core(int argc, char const *argv[])
 
 
     rmMatrix(&map);
-
+ 
     return 0;
 }
 
