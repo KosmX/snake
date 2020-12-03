@@ -21,6 +21,10 @@
 
 //-----------methods--------------
 
+/**
+ * @param   set set the unicode encoding
+ * @return  is the program in unicode mode
+ */
 int isUnicodeEncoding(int set){
     static int bl = 0;
     if(set){
@@ -31,6 +35,8 @@ int isUnicodeEncoding(int set){
 
 /**
  * Only the first byte is required
+ * @param   c   first byte of the unicode char
+ * @return  How long is this utf-8 character (in bytes)
  */
 int checkUnicharLen(char c){
     int i = 0;
@@ -50,6 +56,9 @@ int checkUnicharLen(char c){
     return i;
 }
 
+/**
+ * @deprecated only used for debugging
+ */
 void printChar(unichar c){
     int len;
     len = checkUnicharLen(c.bytes.c[0]);
@@ -60,6 +69,12 @@ void printChar(unichar c){
 
 //fueoetoeoecsoeoe *next //what to NOT do
 
+/**
+ * read file into the map matrix
+ * @param   file    the map file "object"
+ * @param   matrix  the pointer of the matrix to return
+ * @return  was the read successful
+ */
 int readFile(FILE *file, Matrix *matrix){
     int c, len, maxLineLen = 0, lineCount = 1, lineLen = 0; //lineCount = (3,1) ??? why?... i was just bored
     struct Vec2i pos;
@@ -158,6 +173,9 @@ int readFile(FILE *file, Matrix *matrix){
     return 0;
 }
 
+/** free up matrix
+ * @param map matrix to free up
+ */
 void rmMatrix(Matrix *map){
     for(int i = 0; i < map->width; i++){
         free(map->matrix[i]);
@@ -168,25 +186,38 @@ void rmMatrix(Matrix *map){
 //Use what chunk,
 //witch screen coordinates?
 //just the screen data
+/**
+ * prints a chunk into the screen, if the input position is relative
+ * @param ch chunk to print
+ * @param pos position relative to the screen
+ * @param scrDat standard screen infos
+ */
 void printChunk(chunk ch, Pos pos, screenData *scrDat){
     //pos.x -= scrDat->pos.x;
     //pos.y -= scrDat->pos.y;
     if(pos.x < 0 || pos.y < 0 || pos.x >= scrDat->size.x || pos.y >= scrDat->size.y){
         return; //if pos is not on the screen, just do nothing.
     }
+    if(ch.isFood){
+        chunk ch = scrDat->foodTexture.text[ch.data.FRand%scrDat->foodTexture.len];
+    }
     printf("\e[%d;%dH", pos.y+1, pos.x *2+1);
     for(int i = 0; i < 2; i++){
-        printChar(ch.data.chars[i]);
+        printChar(ch.data.chars[i]); 
     }
     #ifdef DEBUG
     printf("\e[0;0H\n"); //to update terminal after EVERY print but drasticlally slowing it down
     #endif
 }
 
-/**Print characters to a map pos
- * 
+/** Print characters to the screen with an absolute position input
  * It will check if the character is on the screen
  * 
+ * @param ch chunk to print
+ * @param pos absolute position
+ * @param scrDat standard screen data
+ * @param width map width
+ * @param height map height
  */
 void print(chunk ch, Pos pos, screenData *scrDat, int width, int height){
     pos.x = pos.x - scrDat->pos.x;
@@ -210,10 +241,21 @@ void print(chunk ch, Pos pos, screenData *scrDat, int width, int height){
     printChunk(ch, pos, scrDat);
 }
 
-void printSnakeChunk(snakeChain *snake){
+
+/** prints snake chain onto the map, listening to directions
+ */
+//TODO
+void printSnakeChunk(snakeChain *snake, Direction prevDir, screenData *scrDat){
     //TODO
 }
 
+
+/**
+ * update the windows size if resized
+ * @param map map for width and height
+ * @param scrDat standard screen data. changes will apply
+ * @return did the screen size changed
+ */
 int updateScreenSize(Matrix *map, screenData *scrDat){
     struct Vec2i size = getWindowSize();
     size.x = size.x / 2;
@@ -230,19 +272,27 @@ int updateScreenSize(Matrix *map, screenData *scrDat){
     return 1;
 }
 
-//Update screen if required 
+/**
+ * Update the screen if it changed size of snek is near to the screen border
+ * The game doesn't update every character in every round to be more efficient
+ * 
+ * @param map map
+ * @param scrDat screenData
+ * @param head the head of the snake
+ * @param d snek's current moving direction
+ */
 void updateScreen(Matrix *map, screenData *scrDat, snakeChain *head, Direction d){
     int do_update;
     do_update = updateScreenSize(map, scrDat);
 
     if(do_update){
         if(scrDat->size.x < map->width){
-            scrDat->pos.x = mod((head->pos.x + scrDat->size.x) - scrDat->size.x / 2 ,map->width, scrDat->repeatMap);
+            scrDat->pos.x = mod(head->pos.x - scrDat->size.x / 2 ,map->width, scrDat->repeatMap);
         }else{
             scrDat->pos.x = 0;
         }
         if(scrDat->size.y < map->height){
-            scrDat->pos.y = mod((head->pos.y + scrDat->size.y) - scrDat->size.y / 2 ,map->height, scrDat->repeatMap);
+            scrDat->pos.y = mod(head->pos.y - scrDat->size.y / 2 ,map->height, scrDat->repeatMap);
         }else{
             scrDat->pos.y = 0;
         }
@@ -300,6 +350,13 @@ void updateScreen(Matrix *map, screenData *scrDat, snakeChain *head, Direction d
     }
 }
 
+/**
+ * reads the stdin for new control commands (wasd), apply them to the scrDat commands standardDat
+ * and dooesn't start to wait for user input if not available.
+ * 
+ * @param scrDat standard game data
+ * @param direction current direction
+ */
 void getControl(screenData *scrDat, Direction *direction){
     int i;
     while(i = getNextChar(), i != EOF){
@@ -352,14 +409,31 @@ void getControl(screenData *scrDat, Direction *direction){
     }
 }
 
+/**
+ * @param c input chunk
+ * @return false if the input chunk is a wall
+ */
 int isNotWall(chunk c){
     return c.isFood || (c.data.chars[0].bytes.c[0] == ' ' && c.data.chars[1].bytes.c[0] == ' ');
 }
 
+/**
+ * @param c input chunk
+ * @return is the chunk air (not wall and not food)
+ */
 int isAir(chunk c){
     return !c.isFood && isNotWall(c);
 }
 
+/**
+ * after some round it will place a new food onto the map randomly.
+ * 
+ * @param map map
+ * @param foodTick how long ago was the last food placed (pointer)
+ * @param feedAmount how often (in ticks) sould be a new food placed
+ * @param firstSnake snake, to avoid placing food into snake
+ * @param scrDat food will be printed, screed data is needed for this
+ */
 void updateFood(Matrix *map, int *foodTick, int feedAmount, snakeChain *firstSnake, screenData *scrDat){
     if((*foodTick)++ > feedAmount){
         for(int i = 0; i < 128; i++){
@@ -399,6 +473,18 @@ void updateFood(Matrix *map, int *foodTick, int feedAmount, snakeChain *firstSna
 }
 
 //EOF fatal error, 1 game over
+
+/**
+ * step and check snake
+ * 
+ * 
+ * @param map map
+ * @param scrDat screenData
+ * @param d current direction
+ * @param head head of snek
+ * @param canBite can sneak bite itself (boolean)
+ * @return EOF if fatal error happened, 1 if the game is over, 0 instead.
+ */
 int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, int canBite){
     Pos pos = head->pos;
     switch (d)
@@ -447,14 +533,19 @@ int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, 
         }
         snakeChain *snake = head;
         Pos tmp_pos1 = head->pos, tmp_pos2;
+        Direction dir_tmp = head->dir, dir_tmp2;
+        head->dir = d;
         head->pos = pos;
         while (snake->next != 0)
         {
             snake = snake->next;
             chunk c;
+
+            //if snek hit itself
             if(snake != head && snake->pos.x == head->pos.x && snake->pos.y == head->pos.y){
                 if(snake->next != NULL){
                     if(canBite){
+                        //if snek can bite its own tail, free that space and fill these places with   .
                         snakeChain *current = snake, *tmp_snek = snake->next;
                         current->next = NULL;
                         while (tmp_snek != NULL)
@@ -478,12 +569,26 @@ int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, 
                 
                 
             }
+            //step position
             tmp_pos2 = snake->pos;
             snake->pos = tmp_pos1;
             tmp_pos1 = tmp_pos2;
 
+            //step direction
+            dir_tmp2 = snake->dir;
+            snake->dir = dir_tmp;
+
+            //render snek
+            
+            /*
             c.data.chars[0].bytes.c[0] = '>';
             c.data.chars[1].bytes.c[0] = '<';            
+            */
+            if(snake->pos.x != -1){
+                //TODO call render
+            }
+
+            //create a new segment
             if(snake->next == NULL && isFood){
                 isFood = false;
                 snake->next = malloc(sizeof(snakeChain));
@@ -492,15 +597,18 @@ int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, 
                 }
                 snake->next->next = NULL;
                 snake->next->pos = tmp_pos1;
+                snake->next->num = snake->num + 1;
             }
-            if(snake->pos.x == -1){
-                continue;   //don't render snake part with initial position
-            }
-            printf(blue);
-            print(c, snake->pos, scrDat, map->width, map->height); //TODO direction snake
-            printf("\e[0m");
+            //printf(blue);
+            //print(c, snake->pos, scrDat, map->width, map->height); //TODO direction snake
+
+            #ifdef DEBUG
+            printf("\e[0m"); //if debug active, update display after every segments
+            #endif
 
         }
+
+        //clear last segment form the screen
         if(tmp_pos2.x != -1){
             chunk c; 
             c.data.chars[0].bytes.c[0] = ' ';
@@ -512,7 +620,10 @@ int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, 
         c.data.chars[1].bytes.c[0] = ')';
         printf(blue);
         print(c, head->pos, scrDat, map->width, map->height); //TODO direction snake
+
+        #ifdef DEBUG
         printf("\e[0m");
+        #endif
     }
     else
     {
@@ -523,6 +634,16 @@ int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, 
 
 //------------config loader------------
 
+/**
+ * Loads game config file
+ * 
+ * @param tickSpeed game tickSpeed in miliseconds
+ * @param repeatMap is the map repeated
+ * @param feedAmount food spawn rate
+ * @param canBite can snek bite itself
+ * 
+ * @return EOF if error 0 instead
+ */
 int loadConfig(int *tickSpeed, int *repeatMap, int *feedAmount, int *canBite){
     FILE *config;
     config = fopen("config.cfg", "r");
@@ -581,6 +702,21 @@ int loadConfig(int *tickSpeed, int *repeatMap, int *feedAmount, int *canBite){
 //update display
 //update food state
 //step snake
+/**
+ * ticks the game including everything
+ * updates the control
+ * updates the screen
+ * updates the foods
+ * steps snek
+ * 
+ * @param map map
+ * @param scrDat screenData
+ * @param snake snake's head
+ * @param d direction
+ * @param feedAmount food spawn rate
+ * @param canBite can snake bite its own tail
+ * @return 1 if game over
+ */
 int tick(Matrix *map, screenData *scrDat, snakeChain *snake, Direction *d, int feedAmount, int canBite){
     static int foodTick = 0;
     getControl(scrDat, d);
@@ -609,6 +745,16 @@ int tick(Matrix *map, screenData *scrDat, snakeChain *snake, Direction *d, int f
     return 0;
 }
 
+/**
+ * prepares the game for loop and then starts the infinite loop
+ * 
+ * @param matrix map
+ * @param tickspeed game tickspeed in milis
+ * @param repeatMap does the map repeat itself
+ * @param feedAmount food spawn rate
+ * @param canBite can snake bite itself
+ * @return 0
+ */
 int loop(Matrix *matrix, int tickspeed, int repeatMap, int feedAmount, int canBite){
 
     Direction d = NONE; //Init with none
@@ -636,6 +782,7 @@ int loop(Matrix *matrix, int tickspeed, int repeatMap, int feedAmount, int canBi
         chain = chain->next;
         chain->pos = p;
         chain->next = NULL;
+        chain->num = i-1;
     }
 
     scrDat.size.x = 0;
@@ -653,6 +800,13 @@ int loop(Matrix *matrix, int tickspeed, int repeatMap, int feedAmount, int canBi
 }
 
 //------------TESTING METHODS-------------
+
+/**
+ * ONLY FOR DEBUG
+ * print the map for debug
+ * 
+ * @param map map
+ */
 void _testprint(Matrix *map){
     for (int y = 0; y < map->height; y++){
         for(int x = 0; x < map->width; x++){
@@ -667,6 +821,12 @@ void _testprint(Matrix *map){
     }
 }
 
+/**
+ * ONLY FOR DEBUG
+ * reads coordinates from stdin and print this pos to the stdout
+ * 
+ * @param map map
+ */
 void _print1char(Matrix *map){
     int x, y;
     while(scanf(" %d%d", &x, &y) == 2){
@@ -688,6 +848,13 @@ void _print1char(Matrix *map){
 
 //-------------CORE METHOD----------------
 
+/**
+ * The main method is respinsible for the debug or release mode start, technically the main is redirected here
+ * initialize the game then start tle game
+ * 
+ * @param argc redirected argc
+ * @param argv redirected argv
+ */
 int core(int argc, char const *argv[])
 {
     FILE *f;
@@ -716,7 +883,7 @@ int core(int argc, char const *argv[])
     //----import map----
 
     if(argc == 1){
-        printf("Usage: snake <map name> [<snake skin>]");
+        printf("Usage: snake \<map name\> \[\<snake skin\>\]");
         return 0;
     }
     else{
@@ -731,7 +898,9 @@ int core(int argc, char const *argv[])
     //----start game----
 
 
+    #ifdef DEBUG
     _testprint(&map);
+    #endif
 
     loop(&map, tickspeed, repeatMap, feedAmount, canBite);
 
@@ -760,6 +929,8 @@ int main(int argc, char const *argv[])
  * debugger main function
  * in debug mode, starts the core with correct params
  * in release mode, it will use user input files.
+ * @param argc argc
+ * @param argv *argv[]
  */
 int main(int argc, char const *argv[])
 {
@@ -768,7 +939,7 @@ int main(int argc, char const *argv[])
     //2 + 3;  //... this does nothing...
     #ifdef DEBUG
     int ret;
-    char const *array[] = {argv[0], "map1.txt"};
+    char const *array[] = {argv[0], "snake.c"}; // set the debug input
     ret = core(2, array);
     printf("\npress any key to continue");
     getchar();

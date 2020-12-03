@@ -2,11 +2,11 @@
 #define SNAKE_STRUCTS
 
 typedef enum Direction{
-    NONE = 0,
-    UP,
-    RIGHT,
-    DOWN,
-    LEFT,
+    NONE = -1,
+    UP = 0,
+    RIGHT = 1,
+    DOWN = 2,
+    LEFT = 3,
 }Direction;
 
 typedef struct Vec2i{
@@ -18,6 +18,7 @@ typedef struct snakeChain
 {
     int num;
     struct Vec2i pos;
+    Direction dir;
     struct snakeChain *next;
 
 }snakeChain;
@@ -62,12 +63,13 @@ typedef struct chunkMatrix{
     int height;
 }Matrix;
 
-/*typedef struct Food{
-    Pos pos;
-    int rand;
-    struct Food *next;
-}Food;*/
 
+typedef struct foodText{
+    int len;
+    chunk *text;
+}foodText;
+
+//Storing important information from the screen
 typedef struct screenData{
     Pos pos;
     Pos size;
@@ -75,6 +77,8 @@ typedef struct screenData{
     int isXRepeat;
     int isYRepeat;
     Direction commands[2];
+    foodText foodTexture;//not real texture, but characters
+    //snake texture will be a bit more difficult
 }screenData;
 
 #endif
