@@ -1062,8 +1062,8 @@ int main(int argc, char const *argv[])
     //return 0, ret; //Miért van ez a függvény tele szeméttel??? pl 0, smt...
 
     return ret; // így szép.
+    debugmalloc_dump();
     #else
     return core(argc, argv);
-    debugmalloc_dump();
     #endif
 }

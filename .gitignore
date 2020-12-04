@@ -3,3 +3,4 @@ snake.exe
 snake
 
 *.exe
+*.o
