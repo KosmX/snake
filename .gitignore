@@ -4,3 +4,7 @@ snake
 
 *.exe
 *.o
+
+structs
+multiplatformLib
+debugmalloc
