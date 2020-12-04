@@ -20,21 +20,41 @@
 
 //Init some platform dependent configurations
 
+/**
+ * @deprecated
+ */
 void refreshScreen(void){
     #ifdef __linux__
     //TODO
     #endif
 }
 
+#ifdef __linux__
+struct termios term_config;
+#endif
+
 //Init platform specific IO
+/**
+ * Init platform dependent stuff, mostly the custom oi control
+ */
 void initMultiplatform(void){
     #ifdef __linux__
     struct termios info;
     tcgetattr(0, &info); //get attr
+    term_config = info; //store the original terminal config
     info.c_lflag &= ~ICANON; //turn off canonical mode
     info.c_lflag &= ~ECHO;
     tcsetattr(0, TCSANOW, &info); //set attr
     setbuf(stdin, NULL); //???
+    #endif
+}
+
+/**
+ * Unload and undo platform dependent configs
+ */
+void endMultiplatformLib(void){
+    #ifdef __linux__
+    tcsetattr(0, TCSANOW, &term_config); //undo terminal config changes
     #endif
 }
 #ifdef __linux__
@@ -46,7 +66,11 @@ int _kbhit(){
 }
 #endif
 
-//returns the char or EOF
+/**
+ * get the next char form stdin without waiting
+ * 
+ * @return EOF if no character on stdiní the char instead
+ */
 int getNextChar(void){
     if(_kbhit()){
         #ifdef __linux__
@@ -60,7 +84,9 @@ int getNextChar(void){
     }
 }
 
-//Returns with the size of the terminal
+/** 
+ * @return returns with the size of the terminal window
+ */
 struct Vec2i getWindowSize(void){
     struct Vec2i size;
     #ifdef __linux__
@@ -77,7 +103,11 @@ struct Vec2i getWindowSize(void){
     return size;
 }
 
-//sleem
+/**
+ * sleep
+ * 
+ * @param milisec time to sleep in milis
+ */
 void unisleep(int milisec){
     #ifdef __linux__
     struct timespec ts;
@@ -90,8 +120,15 @@ void unisleep(int milisec){
 }
 
 
-//NOT TRUE MOD FUNCTION
-//makes a false modulus what is always positive
+/**
+ * work only in k > -m and k < 2m where k is the input m is the modulo
+ * 
+ * always return r >= 0 && < m
+ * @param i input
+ * @param base modulus base
+ * @param repeat is in repeat mode
+ * @return modulo i
+ */
 int mod(int i, int base, int repeat){
     if(i < 0){
         if(repeat){

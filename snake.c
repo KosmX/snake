@@ -1,7 +1,10 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+
+#ifdef DEBUG //include debugmalloc only in debug mode compile :D
 #include "debugmalloc.h"
+#endif
 
 #include<locale.h>
 #include<ctype.h>
@@ -9,6 +12,9 @@
 
 #include "structs.h"
 #include "multiplatformLib.h"
+
+#define true 1
+#define false 0
 
 //debugmalloc from infoc
 
@@ -199,12 +205,14 @@ void printChunk(chunk ch, Pos pos, screenData *scrDat){
         return; //if pos is not on the screen, just do nothing.
     }
     if(ch.isFood){
-        chunk ch = scrDat->foodTexture.text[ch.data.FRand%scrDat->foodTexture.len];
+        ch = scrDat->foodTexture.text[ch.data.FRand%scrDat->foodTexture.len];
+        printf(green);
     }
     printf("\e[%d;%dH", pos.y+1, pos.x *2+1);
     for(int i = 0; i < 2; i++){
         printChar(ch.data.chars[i]); 
     }
+    printf("\e[0m");
     #ifdef DEBUG
     printf("\e[0;0H\n"); //to update terminal after EVERY print but drasticlally slowing it down
     #endif
@@ -457,14 +465,16 @@ void updateFood(Matrix *map, int *foodTick, int feedAmount, snakeChain *firstSna
                 //pos is available
                 {
                     *foodTick = 0;
-                    chunk c;
+                    
+                    //chunk c;
                     map->matrix[pos.x][pos.y].isFood = 1;
                     map->matrix[pos.x][pos.y].data.FRand = rand();
-                    c.data.chars[0].bytes.c[0] = 'X';
-                    c.data.chars[1].bytes.c[0] = 'X';
-                    printf(green);
-                    print(c, pos, scrDat, map->width, map->height);
-                    printf("\e[0m");
+                    //c.data.chars[0].bytes.c[0] = 'X';
+                    //c.data.chars[1].bytes.c[0] = 'X';
+                    
+                    //printf(green); //foods are green
+                    print(map->matrix[pos.x][pos.y], pos, scrDat, map->width, map->height);
+                    //printf("\e[0m");
                     break;
                 }
             }
@@ -540,6 +550,7 @@ int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, 
         {
             snake = snake->next;
             chunk c;
+            c.isFood = 0;
 
             //if snek hit itself
             if(snake != head && snake->pos.x == head->pos.x && snake->pos.y == head->pos.y){
@@ -579,13 +590,15 @@ int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, 
             snake->dir = dir_tmp;
 
             //render snek
+            dir_tmp = dir_tmp2;
             
-            /*
+            
             c.data.chars[0].bytes.c[0] = '>';
             c.data.chars[1].bytes.c[0] = '<';            
-            */
+            
             if(snake->pos.x != -1){
-                //TODO call render
+                printf(blue);
+                print(c, snake->pos, scrDat, map->width, map->height); //TODO direction snake
             }
 
             //create a new segment
@@ -599,8 +612,6 @@ int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, 
                 snake->next->pos = tmp_pos1;
                 snake->next->num = snake->num + 1;
             }
-            //printf(blue);
-            //print(c, snake->pos, scrDat, map->width, map->height); //TODO direction snake
 
             #ifdef DEBUG
             printf("\e[0m"); //if debug active, update display after every segments
@@ -611,23 +622,63 @@ int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, 
         //clear last segment form the screen
         if(tmp_pos2.x != -1){
             chunk c; 
+            c.isFood = 0;
             c.data.chars[0].bytes.c[0] = ' ';
             c.data.chars[1].bytes.c[0] = ' ';
             print(c, tmp_pos2, scrDat, map->width, map->height); //set this to air.
         }
         chunk c;
+        c.isFood = 0;
         c.data.chars[0].bytes.c[0] = '(';
         c.data.chars[1].bytes.c[0] = ')';
         printf(blue);
         print(c, head->pos, scrDat, map->width, map->height); //TODO direction snake
 
-        #ifdef DEBUG
+        //set color back to white
         printf("\e[0m");
-        #endif
+
     }
     else
     {
         return 1; //GAME OVER hit the wall;
+    }
+    return 0;
+}
+
+//----------texture loader(s)----------
+
+/**
+ * load food skins from file
+ * 
+ * @param f file
+ * @param data data pointer to store the information
+ * @param size size pointer for the data
+ */
+int load_food_skin(FILE *f, chunk **data, int *len){
+    int size;
+    fscanf(f, "%d", &size);
+    *data = calloc(size, sizeof(chunk));
+    if(data == 0){
+        return EOF;
+    }
+    *len = size;
+    for(int i = 0; i < size; i++){
+        int c;
+        while(c = fgetc(f), c != '\n'){
+            if(c == EOF){
+                return c;
+            }
+        }
+        for(int ch = 0; ch < 2; ch++){
+            c = fgetc(f);
+            (*data)[i].data.chars[ch].bytes.c[0] = c;
+            if(isUnicodeEncoding(0)){
+                int n = checkUnicharLen(c);
+                for (int p = 1; p < n; p++){
+                    (*data)[i].data.chars[ch].bytes.c[p] = fgetc(f);
+                }
+            }
+        }
     }
     return 0;
 }
@@ -641,10 +692,12 @@ int updateSnake(Matrix *map, screenData *scrDat, Direction d, snakeChain *head, 
  * @param repeatMap is the map repeated
  * @param feedAmount food spawn rate
  * @param canBite can snek bite itself
+ * @param foodText food textures
+ * @param foodLen food textures amount
  * 
  * @return EOF if error 0 instead
  */
-int loadConfig(int *tickSpeed, int *repeatMap, int *feedAmount, int *canBite){
+int loadConfig(int *tickSpeed, int *repeatMap, int *feedAmount, int *canBite, chunk **foodText, int *foodLen){
     FILE *config;
     config = fopen("config.cfg", "r");
     //int stillFile = 1; //boolean to show file is ended...
@@ -685,6 +738,33 @@ int loadConfig(int *tickSpeed, int *repeatMap, int *feedAmount, int *canBite){
         }
         else if(strncmp(name, "can_bite", 9) == 0){
             fscanf(config, " %d", canBite);
+        }
+        else if(strncmp(name, "food_text_file", 10) == 0){
+            char fname[64] = {0}; //set it to zeros
+            int tmp_bool = true;
+            while(c = fgetc(config), isspace(c)){
+                if(c == '\n'){
+                    tmp_bool = false;
+                    break;
+                }
+            }
+            if(tmp_bool){
+                int tmp_int = 0;
+                do{
+                    fname[tmp_int++] = c;
+                    c = fgetc(config);
+                }while(!isspace(c));
+            }
+            FILE *skin_file = fopen(fname, "rb");
+            if(skin_file == 0){
+                return 1;
+            }
+            if(load_food_skin(skin_file, foodText, foodLen)){
+                fclose(skin_file);
+                return 2;
+            }
+            fclose(skin_file);
+
         }
         else{
             printf("Unknown keyword: %s", name);
@@ -728,6 +808,7 @@ int tick(Matrix *map, screenData *scrDat, snakeChain *snake, Direction *d, int f
     updateScreen(map, scrDat, snake, *d);
     if(*d == NONE){
         chunk c;
+        c.isFood = false;
         c.data.chars[0].bytes.c[0] = '(';
         c.data.chars[1].bytes.c[0] = ')';
         printf(blue);
@@ -738,7 +819,7 @@ int tick(Matrix *map, screenData *scrDat, snakeChain *snake, Direction *d, int f
     updateFood(map, &foodTick, feedAmount, snake, scrDat);
     if(updateSnake(map, scrDat, *d, snake, canBite)){
         *d = NONE;
-        //TODO Game over or remove 1 hp or ...
+        return 1; //game over 
     }
     //printf("\e[0;0H\n"); //Update the terminal (mostly on Unix based systems)
     fflush(stdout);
@@ -753,9 +834,11 @@ int tick(Matrix *map, screenData *scrDat, snakeChain *snake, Direction *d, int f
  * @param repeatMap does the map repeat itself
  * @param feedAmount food spawn rate
  * @param canBite can snake bite itself
+ * @param foodText food textures in chunks array
+ * @param foodTextLen food texture length
  * @return 0
  */
-int loop(Matrix *matrix, int tickspeed, int repeatMap, int feedAmount, int canBite){
+int loop(Matrix *matrix, int tickspeed, int repeatMap, int feedAmount, int canBite, chunk *foodText, int foodTextLen){
 
     Direction d = NONE; //Init with none
     screenData scrDat;
@@ -790,11 +873,22 @@ int loop(Matrix *matrix, int tickspeed, int repeatMap, int feedAmount, int canBi
     scrDat.repeatMap = repeatMap;
     scrDat.commands[0] = NONE;
     scrDat.commands[1] = NONE;
+    scrDat.foodTexture.text = foodText;
+    scrDat.foodTexture.len = foodTextLen;
+    scrDat.isXRepeat = false;
+    scrDat.isYRepeat = false;
     while(42){
         if(tick(matrix, &scrDat, &snake, &d, feedAmount, canBite)){
             break;
         }
         unisleep(tickspeed); //Special sleep to work both in windows and unix environment
+    }
+    chain = snake.next;
+    while (chain != NULL)
+    {
+        snakeChain *next = chain->next;
+        free(chain);
+        chain = next;
     }
     return 0;
 }
@@ -854,23 +948,41 @@ void _print1char(Matrix *map){
  * 
  * @param argc redirected argc
  * @param argv redirected argv
+ * @return 2 if config error 0 is okay
  */
 int core(int argc, char const *argv[])
 {
+    if(argc == 1){
+        printf("Usage: snake <map name> [<snek skin>]");
+        return 0;
+    }
+
     FILE *f;
     Matrix map;
 
-    initMultiplatform(); // init stuff.
 
     srand(time(0)); // bee a bit more random
 
     int tickspeed = 100, repeatMap = 0, feedAmount = 20, canBite = true; // if no config, default value
 
     //----load config----
+    chunk *foodText = NULL;
+    int foodLen = 0;
 
-    if(loadConfig(&tickspeed, &repeatMap, &feedAmount, &canBite)){
+    if(loadConfig(&tickspeed, &repeatMap, &feedAmount, &canBite, &foodText, &foodLen)){
         printf("Error while loading config...");
     }
+
+    if(foodText == NULL){
+        printf("No food texture file were found in config.");
+        return 2;
+    }
+    if(foodLen == 0){
+        printf("No food texture error");
+        free(foodText);
+        return 2;
+    }
+
 
     //----init tasks----
 
@@ -882,18 +994,14 @@ int core(int argc, char const *argv[])
 
     //----import map----
 
-    if(argc == 1){
-        printf("Usage: snake \<map name\> \[\<snake skin\>\]");
-        return 0;
+    
+    f = fopen(argv[1], "rb");
+    if(f == NULL){
+        printf("Map file not found: %s", argv[1]);
+        return EOF;
     }
-    else{
-        f = fopen(argv[1], "rb");
-        if(f == NULL){
-            printf("Map file not found: %s", argv[1]);
-            return EOF;
-        }
-        readFile(f, &map);
-    }
+    readFile(f, &map);
+    
 
     //----start game----
 
@@ -902,7 +1010,15 @@ int core(int argc, char const *argv[])
     _testprint(&map);
     #endif
 
-    loop(&map, tickspeed, repeatMap, feedAmount, canBite);
+    initMultiplatform(); // init stuff.
+
+    printf("\e[7\e[?25l");//save cursor state and turn invisible cursor
+    loop(&map, tickspeed, repeatMap, feedAmount, canBite, foodText, foodLen);
+    printf("\e[8\e[2JGAME OVER...\n");
+    unisleep(2000);
+
+    endMultiplatformLib();
+
 
     //test code
     //printf("map:\n");
@@ -911,8 +1027,10 @@ int core(int argc, char const *argv[])
     //free stuff
 
 
-
+    free(foodText);
     rmMatrix(&map);
+    printf("\npress any key to continue\n");
+    getchar();
  
     return 0;
 }
@@ -934,15 +1052,13 @@ int main(int argc, char const *argv[])
  */
 int main(int argc, char const *argv[])
 {
-    int walltest; //warning: unused variable ‘walltest’ [-Wunused-variable]
+    //int walltest; //warning: unused variable ‘walltest’ [-Wunused-variable]
 
     //2 + 3;  //... this does nothing...
     #ifdef DEBUG
     int ret;
-    char const *array[] = {argv[0], "snake.c"}; // set the debug input
+    char const *array[] = {argv[0], "map1.txt"}; // set the debug input
     ret = core(2, array);
-    printf("\npress any key to continue");
-    getchar();
     //return 0, ret; //Miért van ez a függvény tele szeméttel??? pl 0, smt...
 
     return ret; // így szép.
