@@ -42,7 +42,7 @@ struct termios term_config;
 /**
  * Init platform dependent stuff, mostly the custom oi control
  */
-int initMultiplatform(void){
+int initMultiplatform(int unicode){
     #ifdef __linux__
     struct termios info;
     tcgetattr(0, &info); //get attr
@@ -52,6 +52,7 @@ int initMultiplatform(void){
     tcsetattr(0, TCSANOW, &info); //set attr
     setbuf(stdin, NULL); //???
     #else
+    SetConsoleOutputCP(65001); //YES YES YES UTF in WINDOWS TERMINAL!!! :D
     //Enable vt100 emulation. Without this, snake is not working
     HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
     if(out == INVALID_HANDLE_VALUE){

@@ -814,6 +814,7 @@ int tick(Matrix *map, screenData *scrDat, snakeChain *snake, Direction *d, int f
         printf(blue);
         print(c, snake->pos, scrDat, map->width, map->height);
         printf("\e[0m");
+        fflush(stdout);
         return 0; // waiting for user input.
     }
     updateFood(map, &foodTick, feedAmount, snake, scrDat);
@@ -983,15 +984,6 @@ int core(int argc, char const *argv[])
         return 2;
     }
 
-
-    //----init tasks----
-
-    if(isUnicodeEncoding(0)){
-        #ifndef __linux__
-        setlocale(LC_ALL, ".utf-8");
-        #endif
-    }
-
     //----import map----
 
     
@@ -1010,7 +1002,7 @@ int core(int argc, char const *argv[])
     _testprint(&map);
     #endif
 
-    if(!initMultiplatform()){ // init stuff.
+    if(!initMultiplatform(isUnicodeEncoding(0))){ // init stuff.
 
         printf("\e[7\e[?25l");//save cursor state and turn invisible cursor
         loop(&map, tickspeed, repeatMap, feedAmount, canBite, foodText, foodLen);
