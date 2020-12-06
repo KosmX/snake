@@ -953,7 +953,7 @@ void _print1char(Matrix *map){
 int core(int argc, char const *argv[])
 {
     if(argc == 1){
-        printf("Usage: snake <map name> [<snek skin>]");
+        printf("Usage: %s <map name>", argv[0]);
         return 0;
     }
 
@@ -1010,14 +1010,20 @@ int core(int argc, char const *argv[])
     _testprint(&map);
     #endif
 
-    initMultiplatform(); // init stuff.
+    if(!initMultiplatform()){ // init stuff.
 
-    printf("\e[7\e[?25l");//save cursor state and turn invisible cursor
-    loop(&map, tickspeed, repeatMap, feedAmount, canBite, foodText, foodLen);
-    printf("\e[8\e[2JGAME OVER...\n");
-    unisleep(2000);
+        printf("\e[7\e[?25l");//save cursor state and turn invisible cursor
+        loop(&map, tickspeed, repeatMap, feedAmount, canBite, foodText, foodLen);
+        printf("\e[0;0H\e[8\e[2JGAME OVER...\n");
+        unisleep(2000);
 
-    endMultiplatformLib();
+        endMultiplatformLib();
+    }
+    else
+    {
+        printf("VT100 not working\n%sthis text should be blue...\n");
+    }
+    
 
 
     //test code

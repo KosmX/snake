@@ -5,7 +5,7 @@
 
 struct Vec2i getWindowSize(void);
 
-void initMultiplatform(void);
+int initMultiplatform(void);
 
 void endMultiplatformLib(void);
 
