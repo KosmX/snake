@@ -9,8 +9,6 @@ int initMultiplatform(int unicode);
 
 void endMultiplatformLib(void);
 
-void refreshScreen(void);
-
 int getNextChar(void);
 
 void unisleep(int milisec);

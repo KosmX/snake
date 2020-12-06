@@ -25,14 +25,7 @@
 
 //Init some platform dependent configurations
 
-/**
- * @deprecated
- */
-void refreshScreen(void){
-    #ifdef __linux__
-    //TODO
-    #endif
-}
+
 
 #ifdef __linux__
 struct termios term_config;

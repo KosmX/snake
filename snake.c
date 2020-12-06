@@ -63,7 +63,8 @@ int checkUnicharLen(char c){
 }
 
 /**
- * @deprecated only used for debugging
+ * only used for debugging
+ * @param c unichar to print
  */
 void printChar(unichar c){
     int len;
@@ -251,8 +252,8 @@ void print(chunk ch, Pos pos, screenData *scrDat, int width, int height){
 
 
 /** prints snake chain onto the map, listening to directions
+ * unfinished feature sorry. it were be cool
  */
-//TODO
 void printSnakeChunk(snakeChain *snake, Direction prevDir, screenData *scrDat){
     //TODO
 }
