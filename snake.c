@@ -1021,7 +1021,7 @@ int core(int argc, char const *argv[])
     }
     else
     {
-        printf("VT100 not working\n%sthis text should be blue...\n");
+        printf("VT100 not working\n%sthis text should be blue...\n", blue);
     }
     
 
