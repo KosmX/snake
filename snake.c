@@ -795,7 +795,7 @@ int loadConfig(int *tickSpeed, int *repeatMap, int *feedAmount, int *canBite, ch
  * @param d direction
  * @param feedAmount food spawn rate
  * @param canBite can snake bite its own tail
- * @return 1 if game over
+ * @return 1 if game over EOF if error, 0 if nothing really bad happened.
  */
 int tick(Matrix *map, screenData *scrDat, snakeChain *snake, Direction *d, int feedAmount, int canBite){
     static int foodTick = 0;
